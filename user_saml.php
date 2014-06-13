@@ -45,11 +45,13 @@ class OC_USER_SAML extends OC_User_Backend {
 		$this->autocreate = OCP\Config::getAppValue('user_saml', 'saml_autocreate', false);
 		$this->updateUserData = OCP\Config::getAppValue('user_saml', 'saml_update_user_data', false);
 		$this->defaultGroup = OCP\Config::getAppValue('user_saml', 'saml_default_group', '');
-		$this->protectedGroups = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_protected_groups', '')));
-		$this->usernameMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_username_mapping', '')));
-		$this->mailMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_email_mapping', '')));
-		$this->displayNameMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_displayname_mapping', '')));
-		$this->groupMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_group_mapping', '')));
+		$trim_patterns = Array('/,\s+/', '/\s+,/', '/^\s+/', '/\s+$/');
+		$trim_replacements = Array(',', ',', '', '', '');
+		$this->protectedGroups = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_protected_groups', '')));
+		$this->usernameMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_username_mapping', '')));
+		$this->mailMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_email_mapping', '')));
+		$this->displayNameMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_displayname_mapping', '')));
+		$this->groupMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_group_mapping', '')));
 
 		if (!empty($this->sspPath) && !empty($this->spSource)) {
 			include_once $this->sspPath."/lib/_autoload.php";
