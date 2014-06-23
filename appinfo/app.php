@@ -33,6 +33,7 @@ if (OCP\App::isEnabled('user_saml')) {
 	}
 
 	require_once 'user_saml/user_saml.php';
+	require_once 'user_saml/changepassword/controller.php';
 
 	OCP\App::registerAdmin('user_saml', 'settings');
 
