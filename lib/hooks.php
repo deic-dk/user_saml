@@ -28,6 +28,7 @@ class OC_USER_SAML_Hooks {
 	static public function post_login($parameters) {
 		$userid = $parameters['uid'];
 		$samlBackend = new OC_USER_SAML();
+		$ocUserDatabase = new OC_User_Database();
 
 		if ($samlBackend->auth->isAuthenticated()) {
 			$attributes = $samlBackend->auth->getAttributes();
@@ -37,7 +38,7 @@ class OC_USER_SAML_Hooks {
 				if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
 					$usernameFound = true;
 					$uid = $attributes[$usernameMapping][0];
-					OC_Log::write('saml','Authenticated user '.$uid,OC_Log::DEBUG);
+					OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
 					break;
 				}
 			}
@@ -73,14 +74,16 @@ class OC_USER_SAML_Hooks {
 					OC_Log::write('saml','Using default group "'.$samlBackend->defaultGroup.'" for the user: '.$uid, OC_Log::DEBUG);
 				}
 
-				if (!OC_User::userExists($uid)) {
+				if (!$ocUserDatabase->userExists($uid)) {
+					$userManager = \OC_User::getManager();
+					$userManager->delete($uid);
 					if (preg_match( '/[^a-zA-Z0-9 _\.@\-]/', $uid)) {
 						OC_Log::write('saml','Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ',OC_Log::DEBUG);
 						return false;
 					}
 					else {
-						$random_password = OC_Util::generate_random_bytes(20);
-						OC_Log::write('saml','Creating new user: '.$uid, OC_Log::DEBUG);
+						$random_password = OC_Util::generateRandomBytes(20);
+						OC_Log::write('saml','Creating new user: '.$uid, OC_Log::INFO);
 						OC_User::createUser($uid, $random_password);
 						if(OC_User::userExists($uid)) {
 							OC_Util::setupFS($uid);
@@ -99,7 +102,7 @@ class OC_USER_SAML_Hooks {
 				else {
 					if ($samlBackend->updateUserData) {
 						OC_Util::setupFS($uid);
-						OC_Log::write('saml','Updating data of the user: '.$uid,OC_Log::DEBUG);
+						OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
 						if(isset($saml_email)) {
 							update_mail($uid, $saml_email);
 						}
@@ -121,7 +124,7 @@ class OC_USER_SAML_Hooks {
 	static public function logout($parameters) {
 		$samlBackend = new OC_USER_SAML();
 		if ($samlBackend->auth->isAuthenticated()) {
-			OC_Log::write('saml', 'Executing SAML logout', OC_Log::DEBUG);
+			OC_Log::write('saml', 'Executing SAML logout', OC_Log::WARN);
 			$samlBackend->auth->logout();
 		}
 		return true;
