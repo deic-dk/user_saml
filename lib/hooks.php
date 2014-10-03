@@ -82,6 +82,23 @@ class OC_USER_SAML_Hooks {
 						return false;
 					}
 					else {
+
+						if(isset($uid) && trim($uid)!='' && !OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
+							$failCookieName = 'saml_auth_fail';
+							$userCookieName = 'saml_auth_fail_user';
+							$expire = 0;//time()+60*60*24*30;
+							$expired = time()-3600;
+							$path = '/';
+							$domain = 'data.deic.dk';//this causes a dot to be prepended
+							setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $domain, false, false);
+							setcookie($userCookieName, $uid, $expire, $path, $domain, false, false);
+							$spSource = 'default-sp';
+							$auth = new SimpleSAML_Auth_Simple($spSource);
+							OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
+							$auth->logout('https://data.deic.dk/');
+							return false;
+						}
+
 						$random_password = OC_Util::generateRandomBytes(20);
 						OC_Log::write('saml','Creating new user: '.$uid, OC_Log::INFO);
 						OC_User::createUser($uid, $random_password);
@@ -120,7 +137,15 @@ class OC_USER_SAML_Hooks {
 		return false;
 	}
 
+	static public function check_user_attributes($attributes){
+		$entitlement = array_key_exists('eduPersonEntitlement' , $attributes) ? $attributes['eduPersonEntitlement'][0] : '';
+		$schacHomeOrganization = array_key_exists('schacHomeOrganization' , $attributes) ? $attributes['schacHomeOrganization'][0]: '';
+		$mail = array_key_exists('mail' , $attributes) ? $attributes['mail'][0]: '';
+		error_log('Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement);
+		return substr($mail, -7)==="@dtu.dk" or $mail == "fror@dtu.dk" or $mail == "uhsk@dtu.dk" or $mail == "no-jusa@aqua.dtu.dk" or $mail == "cbri@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or $mail == "migka@dtu.dk" or $mail == "no-dtma@dtu.dk" or $mail == "christian@cabo.dk" or $mail == "no-frederik@orellana.dk" or $mail == "no-elzi@kb.dk" or $mail == "no-svc@kb.dk";
+	}
 
+	
 	static public function logout($parameters) {
 		$samlBackend = new OC_USER_SAML();
 		if ($samlBackend->auth->isAuthenticated()) {
