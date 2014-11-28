@@ -21,7 +21,6 @@
 *
 */
 
-
 if (OCP\App::isEnabled('user_saml')) {
 	$ocVersion = implode('.',OCP\Util::getVersion());
 	if (version_compare($ocVersion,'5.0','<')) {
@@ -31,7 +30,7 @@ if (OCP\App::isEnabled('user_saml')) {
 			}
 		}
 	}
-
+	
 	require_once 'user_saml/user_saml.php';
 	require_once 'user_saml/changepassword/controller.php';
 
@@ -68,7 +67,8 @@ if (OCP\App::isEnabled('user_saml')) {
 		OC_Util::redirectToDefaultPage();
 	}
 
-	if (!OCP\User::isLoggedIn()) {
+	// Don't remember what this <2 condition was for... FO
+	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (strpos($_SERVER['HTTP_HOST'], 'silo')===FALSE || strpos($_SERVER['HTTP_HOST'], 'silo')!==0)) {
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
 	}
