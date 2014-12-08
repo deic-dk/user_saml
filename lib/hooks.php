@@ -27,7 +27,8 @@ class OC_USER_SAML_Hooks {
 
 	private static $MASTER_LOGIN_OK_COOKIE = "oc_ok";
 	private static $COOKIE_DOMAIN = '.data.deic.dk';
-
+	private static $FRONT_URL = 'https://data.deic.dk/';
+	
 	public static function post_login($parameters) {
 		$uid = '';
     $userid = $parameters['uid'];
@@ -72,7 +73,7 @@ class OC_USER_SAML_Hooks {
     	return false;
     }
     // else
-    $attrs = get_user_attributes($uid, $samlBackend);    
+    $attrs = self::get_user_attributes($uid, $samlBackend);    
     
     if(!$ocUserDatabase->userExists($uid)){
       // If autocreate is not enabled - back off
@@ -100,7 +101,7 @@ class OC_USER_SAML_Hooks {
     		$spSource = 'default-sp';
     		$auth = new SimpleSAML_Auth_Simple($spSource);
     		OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
-    		$auth->logout('https://data.deic.dk/');
+    		$auth->logout($FRONT_URL);
     		return false;
     	}
     	// Create new user
@@ -108,13 +109,13 @@ class OC_USER_SAML_Hooks {
     	OC_Log::write('saml','Creating new user: '.$uid, OC_Log::INFO);
     	OC_User::createUser($uid, $random_password);
     	if(OC_User::userExists($uid)) {
-    		self::update_user_data($uid, $attrs, true);
+    		self::update_user_data($uid, $samlBackend, $attrs, true);
     		self::user_redirect($userid);
     	}
     }
     else{
     	if ($samlBackend->updateUserData) {
-    		self::update_user_data($uid, $attrs, false);
+    		self::update_user_data($uid, $samlBackend, $attrs, false);
     		self::user_redirect($userid);
     	}
     }
@@ -136,9 +137,12 @@ class OC_USER_SAML_Hooks {
 	
 		$result['display_name'] = '';
 		foreach ($samlBackend->displayNameMapping as $displayNameMapping) {
-			if (array_key_exists($displayNameMapping, $attributes) && !empty($attributes[$displayNameMapping][0])) {
-				$result['display_name'] = $attributes[$displayNameMapping][0];
-				break;
+			$dn_attributes = explode(" ", $displayNameMapping);
+			foreach($dn_attributes as $dn_mapping){
+				if (array_key_exists($dn_mapping, $attributes) && !empty($attributes[$dn_mapping][0])) {
+					$result['display_name'] .= " ".$attributes[$dn_mapping][0];
+					break;
+				}
 			}
 		}
 	
@@ -172,7 +176,7 @@ class OC_USER_SAML_Hooks {
 		return $result;	
 	}
 	
-	private static function update_user_data($uid, $attributes=array(), $just_created=false){
+	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
 		OC_Util::setupFS($uid);
 		OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
 		if(isset($saml_email)) {
@@ -196,13 +200,15 @@ class OC_USER_SAML_Hooks {
 		}
 	}
 
-  private static function check_user_attributes($attributes){
+  // TODO: generalize this
+	private static function check_user_attributes($attributes){
     $entitlement = array_key_exists('eduPersonEntitlement' , $attributes) ? $attributes['eduPersonEntitlement'][0] : '';
     $schacHomeOrganization = array_key_exists('schacHomeOrganization' , $attributes) ? $attributes['schacHomeOrganization'][0]: '';
     $mail = array_key_exists('mail' , $attributes) ? $attributes['mail'][0]: '';
     return self::check_user($entitlement, $schacHomeOrganization, $mail);
   }
   
+  // TODO: generalize this
 	private static function check_user($entitlement, $schacHomeOrganization, $mail){
     error_log('Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement);
     
@@ -217,9 +223,9 @@ class OC_USER_SAML_Hooks {
 		}
 	}
   
-  private public function get_user_redirect($userid){
+	// TODO: generalize this - i.e. introduce placing algoritme - and move somewhere upstream - to catch username/password logins
+	private static function get_user_redirect($userid){
 		if($userid == "frederik@orellana.dk"){
-			// TODO: generalize this - i.e. introduce placing algoritme - and move somewhere upstream - to catch username/password logins
 			return "https://silo1.data.deic.dk/";
 		}
 		return null;
@@ -227,12 +233,20 @@ class OC_USER_SAML_Hooks {
 
 
  public static function logout($parameters) {
-		//self::unsetAttributes();
+		self::unsetAttributes();
     $samlBackend = new OC_USER_SAML();
     if ($samlBackend->auth->isAuthenticated()) {
       OC_Log::write('saml', 'Executing SAML logout', OC_Log::INFO);
       $samlBackend->auth->logout();
     }
+ 		else{
+			session_destroy();
+			$session_id = session_id();
+			OC_Log::write('saml', 'Clearing session cookie '.$session_id, OC_Log::INFO);
+			unset($_COOKIE[$session_id]);
+			setcookie($session_id, '', time()-3600, \OC::$WEBROOT);
+			setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/');
+		}
     return true;
   }
   
