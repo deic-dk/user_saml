@@ -26,10 +26,18 @@
 class OC_USER_SAML_Hooks {
 
 	private static $MASTER_LOGIN_OK_COOKIE = "oc_ok";
-	private static $COOKIE_DOMAIN = '.data.deic.dk';
-	private static $FRONT_URL = 'https://data.deic.dk/';
+	// The sharding master, MASTER_FQ, etc. should currently be set manually or by an installer.
+	// TODO: Make this a configurable setting.
+	private static $MASTER_FQ = 'MASTER_FQ';
+	private static $COOKIE_DOMAIN = '.DOMAIN_FQ';
+	private static $MASTER_URL = 'https://MASTER_FQ/';
 	
 	public static function post_login($parameters) {
+		
+		if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+			return true;
+		}
+		
 		$uid = '';
     $userid = $parameters['uid'];
     $samlBackend = new OC_USER_SAML();
@@ -52,8 +60,8 @@ class OC_USER_SAML_Hooks {
     if (!$samlBackend->auth->isAuthenticated()) {
     	return false;
     }
-    // else
-    $attributes = $samlBackend->auth->getAttributes();
+
+		$attributes = $samlBackend->auth->getAttributes();
     
     //$email = "<pre>" . print_r($attributes, 1) . "</pre>";
     //$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
@@ -72,9 +80,9 @@ class OC_USER_SAML_Hooks {
     if (!$usernameFound || $uid !== $userid) {
     	return false;
     }
-    // else
-    $attrs = self::get_user_attributes($uid, $samlBackend);    
-    
+
+		$attrs = self::get_user_attributes($uid, $samlBackend);    
+
     if(!$ocUserDatabase->userExists($uid)){
       // If autocreate is not enabled - back off
     	if(!$samlBackend->autocreate){
@@ -95,13 +103,16 @@ class OC_USER_SAML_Hooks {
     		$expire = 0;//time()+60*60*24*30;
     		$expired = time()-3600;
     		$path = '/';
-    		$domain = $COOKIE_DOMAIN;
+    		$domain = (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN);
     		setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $domain, false, false);
     		setcookie($userCookieName, $uid, $expire, $path, $domain, false, false);
     		$spSource = 'default-sp';
     		$auth = new SimpleSAML_Auth_Simple($spSource);
     		OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
-    		$auth->logout($FRONT_URL);
+    		if(self::$MASTER_URL==='https://MASTER_FQ/'){
+    			self::$MASTER_URL = null;
+    		}
+    		$auth->logout(self::$MASTER_URL);
     		return false;
     	}
     	// Create new user
@@ -119,7 +130,7 @@ class OC_USER_SAML_Hooks {
     		self::user_redirect($userid);
     	}
     }
-    //self::setAttributes($saml_display_name, $saml_email, $saml_groups);
+    self::setAttributes($saml_display_name, $saml_email, $saml_groups);
     return true;
 	}
 	
@@ -196,7 +207,7 @@ class OC_USER_SAML_Hooks {
 			}
 		}
 		if (isset($saml_quota)) {
-			update_quota($uid, $saml_quota);
+			self::update_quota($uid, $saml_quota);
 		}
 	}
 
@@ -216,6 +227,11 @@ class OC_USER_SAML_Hooks {
   }
   
   private static function user_redirect($userid){
+  	
+  	if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+  		return;
+  	}
+  	 
 		$redirect = self::get_user_redirect($userid);
 		if(self::check_user("", "", $userid) && !empty($redirect)){
 			header('Location: ' . $redirect);
@@ -223,7 +239,7 @@ class OC_USER_SAML_Hooks {
 		}
 	}
   
-	// TODO: generalize this - i.e. introduce placing algoritme - and move somewhere upstream - to catch username/password logins
+	// TODO: generalize this - i.e. introduce placing algorithm - and move somewhere upstream - to catch username/password logins
 	private static function get_user_redirect($userid){
 		if($userid == "frederik@orellana.dk"){
 			return "https://silo1.data.deic.dk/";
@@ -232,7 +248,12 @@ class OC_USER_SAML_Hooks {
 	}
 
 
- public static function logout($parameters) {
+	public static function logout($parameters) {
+		
+		if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+			return;
+		}
+		
 		self::unsetAttributes();
     $samlBackend = new OC_USER_SAML();
     if ($samlBackend->auth->isAuthenticated()) {
@@ -259,7 +280,7 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
 		
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
-		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, self::$COOKIE_DOMAIN, true);
+		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN), true);
 	
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
@@ -274,7 +295,7 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_mail", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
 		
-		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, self::$COOKIE_DOMAIN);
+		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN));
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
@@ -325,7 +346,7 @@ class OC_USER_SAML_Hooks {
 	  //OC_User::setDisplayName($uid, $displayName);
 	}
 	
-	function update_quota($uid, $quota) {
+	private static function update_quota($uid, $quota) {
 		if (!empty($quota)) {
 			\OCP\Config::setUserValue($uid, 'files', 'quota', \OCP\Util::computerFileSize($quota));
 		}

@@ -68,7 +68,9 @@ if (OCP\App::isEnabled('user_saml')) {
 	}
 
 	// Don't remember what this <2 condition was for... FO
-	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (strpos($_SERVER['HTTP_HOST'], 'silo')===FALSE || strpos($_SERVER['HTTP_HOST'], 'silo')!==0)) {
+	// Currently MASTER_FQ has to be set manually (or by an installer) to the sharding master.
+	// TODO: Make this configurable as a setting.
+	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ $_SERVER['HTTP_HOST']=="MASTER_FQ") {
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
 	}
