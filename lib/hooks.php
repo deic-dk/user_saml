@@ -47,11 +47,12 @@ class OC_USER_SAML_Hooks {
     // Since this is a post_login hook, he will have authenticated in some way and have a valid session.
     if ($ocUserDatabase->userExists($userid)) {
 			// Set user attributes for sharding
-			$display_name = \OCP\Config::getUserValue(\OCP\User::getUser(), 'settings', 'email');
-			$email = \OCP\Config::getUserValue(\OCP\User::getUser(), 'settings', 'email');
+			$display_name = \OCP\User::getDisplayName($userid);
+			$email = \OCP\Config::getUserValue($userid, 'settings', 'email');
 			$groups = \OC_Group::getUserGroups($userid);
-			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups),OC_Log::INFO);
-			self::setAttributes($display_name, $email, $groups);
+			$quota = \OC_Preferences::getValue($userid,'files','quota');
+			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
+			self::setAttributes($display_name, $email, $groups, $quota);
 			
 			// TODO: generalize check_user
 			self::user_redirect($userid);
@@ -123,6 +124,7 @@ class OC_USER_SAML_Hooks {
     		self::update_user_data($uid, $samlBackend, $attrs, true);
     		self::user_redirect($userid);
     	}
+			self::setAttributes($attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
     }
     else{
     	if ($samlBackend->updateUserData) {
@@ -130,7 +132,6 @@ class OC_USER_SAML_Hooks {
     		self::user_redirect($userid);
     	}
     }
-    self::setAttributes($saml_display_name, $saml_email, $saml_groups);
     return true;
 	}
 	
@@ -152,7 +153,6 @@ class OC_USER_SAML_Hooks {
 			foreach($dn_attributes as $dn_mapping){
 				if (array_key_exists($dn_mapping, $attributes) && !empty($attributes[$dn_mapping][0])) {
 					$result['display_name'] .= " ".$attributes[$dn_mapping][0];
-					break;
 				}
 			}
 		}
@@ -190,24 +190,24 @@ class OC_USER_SAML_Hooks {
 	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
 		OC_Util::setupFS($uid);
 		OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
-		if(isset($saml_email)) {
-			update_mail($uid, $saml_email);
+		if(isset($attributes['email'])) {
+			self::update_mail($uid, $attributes['email']);
 		}
-		if (isset($saml_groups)) {
-			update_groups($uid, $saml_groups, $samlBackend->protectedGroups, false);
+		if(isset($attributes['groups'])) {
+			self::update_groups($uid, $attributes['groups'], $samlBackend->protectedGroups, false);
 		}
 		// Check if a custom displayname has been set before updating the displayname with information from SAML
 		// This is clumsy, but, for some reason, getDisplayName() doesn't work here. - CB
-		if (isset($saml_display_name)) {
+		if (isset($attributes['display_name'])) {
 			$query = OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
 			$result = $query->execute(array($uid))->fetchAll();
 			$displayName = trim($result[0]['displayname'], ' ');
 			if (empty($displayName)) {
-				update_display_name($uid, $saml_display_name);
+				self::update_display_name($uid, $attributes['display_name']);
 			}
 		}
-		if (isset($saml_quota)) {
-			self::update_quota($uid, $saml_quota);
+		if (isset($attributes['quota'])) {
+			self::update_quota($uid, $attributes['quota']);
 		}
 	}
 
@@ -272,11 +272,12 @@ class OC_USER_SAML_Hooks {
   }
   
   // For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
-   private static function setAttributes($saml_display_name, $saml_email, $saml_groups) {
+   private static function setAttributes($saml_display_name, $saml_email, $saml_groups, $saml_quota) {
 		/*$secure_cookie = \OC_Config::getValue("forcessl", false);
 		$expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 60 * 60 * 24 * 15);
 		setcookie("oc_display_name", $saml_display_name, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_mail", $saml_email, $expires, \OC::$WEBROOT, '', $secure_cookie);
+		setcookie("oc_quota", $saml_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
 		
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
@@ -285,7 +286,8 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
 		$_SESSION["oc_groups"] = $saml_groups;
-	}
+		$_SESSION["oc_quota"] = $saml_quota;
+   }
 
 	
 	private static function unsetAttributes() {
@@ -293,12 +295,14 @@ class OC_USER_SAML_Hooks {
 		
 		/*setcookie("oc_display_name", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_mail", '', $expires, \OC::$WEBROOT);
+		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
 		
 		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN));
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
+		unset($_SESSION["oc_quota"]);
 	}
 
 	private static function update_mail($uid, $email) {
