@@ -120,18 +120,19 @@ class OC_USER_SAML_Hooks {
     	$random_password = OC_Util::generateRandomBytes(20);
     	OC_Log::write('saml','Creating new user: '.$uid, OC_Log::INFO);
     	OC_User::createUser($uid, $random_password);
-    	if(OC_User::userExists($uid)) {
-    		self::update_user_data($uid, $samlBackend, $attrs, true);
-    		self::user_redirect($userid);
+    	if(OC_User::userExists($uid)){
+    		if($samlBackend->updateUserData){
+    			self::update_user_data($uid, $samlBackend, $attrs, true);
+    		}
+				self::setAttributes($attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
     	}
-			self::setAttributes($attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
     }
     else{
-    	if ($samlBackend->updateUserData) {
+    	if($samlBackend->updateUserData){
     		self::update_user_data($uid, $samlBackend, $attrs, false);
-    		self::user_redirect($userid);
     	}
     }
+    self::user_redirect($userid);
     return true;
 	}
 	
