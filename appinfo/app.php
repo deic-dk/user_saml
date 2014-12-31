@@ -35,6 +35,12 @@ if (OCP\App::isEnabled('user_saml')) {
 	require_once 'user_saml/changepassword/controller.php';
 
 	OCP\App::registerAdmin('user_saml', 'settings');
+	
+	// Use user_group_admin groups for group management if available
+	if(OCP\App::isEnabled('user_group_admin')){
+		OC::$CLASSPATH['OC_User_Group_Admin_Backend'] ='apps/user_group_admin/lib/backend.php';
+		OC_Group::useBackend( new OC_User_Group_Admin_Backend() );
+	}
 
 	// register user backend
 	OC_User::useBackend( 'SAML' );
