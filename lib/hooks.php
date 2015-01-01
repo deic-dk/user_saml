@@ -322,7 +322,8 @@ class OC_USER_SAML_Hooks {
 	    $old_groups = OC_Group::getUserGroups($uid);
 	    foreach($old_groups as $group) {
 	      if(!in_array($group, $protectedGroups) && !in_array($group, $groups)) {
-	        OC_Group::removeFromGroup($uid,$group);
+				// This does not affect groups from user_group_admin
+	      	OC_Group::removeFromGroup($uid,$group);
 	        OC_Log::write('saml','Removed "'.$uid.'" from the group "'.$group.'"', OC_Log::DEBUG);
 	      }
 	    }
@@ -335,10 +336,20 @@ class OC_USER_SAML_Hooks {
 	    else {
 	      if (!OC_Group::inGroup($uid, $group)) {
 	        if (!OC_Group::groupExists($group)) {
-	          OC_Group::createGroup($group);
-	          OC_Log::write('saml','New group created: '.$group, OC_Log::DEBUG);
+						if(OCP\App::isEnabled('user_group_admin')){
+							OC_User_Group_Admin_Util::createHiddenGroup($group);
+						}
+						else{
+							OC_Group::createGroup($group);
+						}
+						OC_Log::write('saml','New group created: '.$group, OC_Log::DEBUG);
 	        }
-	        OC_Group::addToGroup($uid, $group);
+	        if(OCP\App::isEnabled('user_group_admin')){
+	        	OC_User_Group_Admin_Util::addToGroup($uid, $group);
+	        }
+	        else{
+	        	OC_Group::addToGroup($uid, $group);
+	        }
 	        OC_Log::write('saml','Added "'.$uid.'" to the group "'.$group.'"', OC_Log::DEBUG);
 	      }
 	    }
