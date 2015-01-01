@@ -28,13 +28,13 @@ class OC_USER_SAML_Hooks {
 	private static $MASTER_LOGIN_OK_COOKIE = "oc_ok";
 	// The sharding master, MASTER_FQ, etc. should currently be set manually or by an installer.
 	// TODO: Make this a configurable setting.
-	private static $MASTER_FQ = 'MASTER_FQ';
+	private static $masterfq = 'MASTER_FQ';
 	private static $COOKIE_DOMAIN = '.DOMAIN_FQ';
 	private static $MASTER_URL = 'https://MASTER_FQ/';
 	
 	public static function post_login($parameters) {
 		
-		if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
 			return true;
 		}
 		
@@ -110,10 +110,12 @@ class OC_USER_SAML_Hooks {
     		$spSource = 'default-sp';
     		$auth = new SimpleSAML_Auth_Simple($spSource);
     		OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
-    		if(self::$MASTER_URL==='https://MASTER_FQ/'){
-    			self::$MASTER_URL = null;
+    		if(OCP\App::isEnabled('files_sharding')){
+    			$auth->logout(self::$MASTER_URL);
     		}
-    		$auth->logout(self::$MASTER_URL);
+    		else{
+    			$auth->logout();
+    		}
     		return false;
     	}
     	// Create new user
@@ -229,7 +231,7 @@ class OC_USER_SAML_Hooks {
   
   private static function user_redirect($userid){
   	
-  	if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+  	if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
   		return;
   	}
   	 
@@ -251,7 +253,7 @@ class OC_USER_SAML_Hooks {
 
 	public static function logout($parameters) {
 		
-		if(self::$MASTER_FQ!=='MASTER_FQ' && $_SERVER['HTTP_HOST']!==self::$MASTER_FQ){
+		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
 			return;
 		}
 		
