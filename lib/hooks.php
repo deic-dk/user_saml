@@ -25,15 +25,16 @@
  */
 class OC_USER_SAML_Hooks {
 
-	private static $MASTER_LOGIN_OK_COOKIE = "oc_ok";
+	private static $LOGIN_OK_COOKIE = "oc_ok";
 	// The sharding master, MASTER_FQ, etc. should currently be set manually or by an installer.
 	// TODO: Make this a configurable setting.
 	private static $masterfq = 'MASTER_FQ';
-	private static $COOKIE_DOMAIN = '.DOMAIN_FQ';
-	private static $MASTER_URL = 'https://MASTER_FQ/';
+	private static $cookiedomain = '.DOMAIN_FQ';
+	private static $masterurl = 'https://MASTER_FQ/';
 	
 	public static function post_login($parameters) {
 		
+		// Do nothing if we're sharding and not on the master
 		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
 			return true;
 		}
@@ -104,14 +105,14 @@ class OC_USER_SAML_Hooks {
     		$expire = 0;//time()+60*60*24*30;
     		$expired = time()-3600;
     		$path = '/';
-    		$domain = (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN);
+    		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
     		setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $domain, false, false);
     		setcookie($userCookieName, $uid, $expire, $path, $domain, false, false);
     		$spSource = 'default-sp';
     		$auth = new SimpleSAML_Auth_Simple($spSource);
     		OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
-    		if(OCP\App::isEnabled('files_sharding')){
-    			$auth->logout(self::$MASTER_URL);
+    		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
+    			$auth->logout(self::$masterurl);
     		}
     		else{
     			$auth->logout();
@@ -231,6 +232,7 @@ class OC_USER_SAML_Hooks {
   
   private static function user_redirect($userid){
   	
+  	// Only redirect if sharding is enabled and we're not on the master
   	if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
   		return;
   	}
@@ -284,7 +286,8 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
 		
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
-		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN), true);
+		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
+		setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $domain, true);
 	
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
@@ -301,7 +304,8 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
 		
-		setcookie(self::$MASTER_LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, (self::$COOKIE_DOMAIN==='.DOMAIN_FQ'?null:self::$COOKIE_DOMAIN));
+		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
+		setcookie(self::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $domain);
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);

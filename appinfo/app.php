@@ -42,11 +42,6 @@ if (OCP\App::isEnabled('user_saml')) {
 		OC::$CLASSPATH['OC_User_Group_Admin_Util']    ='apps/user_group_admin/lib/util.php';
 		OC_Group::useBackend( new OC_User_Group_Admin_Backend() );
 	}
-	
-	// Support files_sharding if installed and configured
-	if(OCP\App::isEnabled('files_sharding')){
-		$masterfq = "MASTER_FQ";
-	}
 
 	// register user backend
 	OC_User::useBackend( 'SAML' );
@@ -80,7 +75,8 @@ if (OCP\App::isEnabled('user_saml')) {
 	}
 
 	// Don't remember what this <2 condition was for... FO
-	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (!isset($masterfq) || $_SERVER['HTTP_HOST']==$masterfq)) {
+	// We load the login prompt only if we're stand-alone or on the sharding master
+	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (!isset(\OC_USER_SAML_Hooks::$masterfq) || $_SERVER['HTTP_HOST']===\OC_USER_SAML_Hooks::$masterfq)) {
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
 	}
