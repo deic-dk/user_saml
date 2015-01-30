@@ -76,7 +76,7 @@ if (OCP\App::isEnabled('user_saml')) {
 
 	// Don't remember what this <2 condition was for... FO
 	// We load the login prompt only if we're stand-alone or on the sharding master
-	if (!OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (!isset(\OC_USER_SAML_Hooks::$masterfq) || $_SERVER['HTTP_HOST']===\OC_USER_SAML_Hooks::$masterfq)) {
+	if (strlen($_SERVER['REQUEST_URI'])<=1 && !OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ (!isset(\OC_USER_SAML_Hooks::$masterfq) || $_SERVER['HTTP_HOST']===\OC_USER_SAML_Hooks::$masterfq)) {
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
 	}
