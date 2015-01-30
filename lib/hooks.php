@@ -246,7 +246,7 @@ class OC_USER_SAML_Hooks {
   
 	// TODO: generalize this - i.e. introduce placing algorithm - and move somewhere upstream - to catch username/password logins
 	private static function get_user_redirect($userid){
-		if($userid == "frederik@orellana.dk"){
+		if($userid == "fror@dtu.dk"){
 			return "https://silo1.data.deic.dk/";
 		}
 		return null;
@@ -363,9 +363,10 @@ class OC_USER_SAML_Hooks {
 	private static function update_display_name($uid, $displayName) {
 	  // I inject directly into the database here rather than using the method setDisplayName(), 
 	  // which doesn't work. -CB 
-	  $query = OC_DB::prepare('UPDATE `*PREFIX*users` SET `displayname` = ? WHERE LOWER(`uid`) = ?');                            
-	  $query->execute(array($displayName, $uid));
-	  //OC_User::setDisplayName($uid, $displayName);
+	  // because we're using the user_saml backend, and not the default one - see app.php. - FO
+	  //$query = OC_DB::prepare('UPDATE `*PREFIX*users` SET `displayname` = ? WHERE LOWER(`uid`) = ?');                            
+	  //$query->execute(array($displayName, $uid));
+	  OC_User::setDisplayName($uid, $displayName);
 	}
 	
 	private static function update_quota($uid, $quota) {

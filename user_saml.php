@@ -94,4 +94,54 @@ class OC_USER_SAML extends OC_User_Backend {
 
 		return false;
 	}
+	
+	
+	// From lib/private/user/database.php
+	// Apparently OC cannot use methods from more than one backend.
+	
+	private $cache = array();
+
+	public function setDisplayName($uid, $displayName) {
+		if ($this->userExists($uid)) {
+			$query = OC_DB::prepare('UPDATE `*PREFIX*users` SET `displayname` = ? WHERE LOWER(`uid`) = LOWER(?)');
+			$query->execute(array($displayName, $uid));
+			$this->cache[$uid]['displayname'] = $displayName;
+
+			return true;
+		}
+
+		return false;
+	}
+	
+	public function getDisplayName($uid) {
+		$this->loadUser($uid);
+		return empty($this->cache[$uid]['displayname']) ? $uid : $this->cache[$uid]['displayname'];
+	}
+	
+	public function userExists($uid) {
+		$this->loadUser($uid);
+		return !empty($this->cache[$uid]);
+	}
+	
+	private function loadUser($uid) {
+		if (empty($this->cache[$uid])) {
+			$query = OC_DB::prepare('SELECT `uid`, `displayname` FROM `*PREFIX*users` WHERE LOWER(`uid`) = LOWER(?)');
+			$result = $query->execute(array($uid));
+
+			if (OC_DB::isError($result)) {
+				OC_Log::write('core', OC_DB::getErrorMessage($result), OC_Log::ERROR);
+				return false;
+			}
+
+			while ($row = $result->fetchRow()) {
+				$this->cache[$uid]['uid'] = $row['uid'];
+				$this->cache[$uid]['displayname'] = $row['displayname'];
+			}
+		}
+
+		return true;
+	}
+	
+	
+	
 }
