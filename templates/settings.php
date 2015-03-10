@@ -2,8 +2,8 @@
 <link rel="stylesheet" type="text/css" href="../apps/user_saml/css/saml.css" />
 
 <form id="saml" action="#" method="post">
-	<div id="samlSettings" class="personalblock">
-    <strong><?php p($l->t('SAML Authentication backend'));?></strong>
+	<div id="samlSettings" class="section">
+    <h2><?php p($l->t('SAML Authentication backend'));?></h2>
 	<ul>
 		<li><a href="#samlSettings-1"><?php p($l->t('Basic'));?></a></li>
         <li><a href="#samlSettings-2"><?php p($l->t('Mapping'));?></a></li>

@@ -26,16 +26,11 @@
 class OC_USER_SAML_Hooks {
 
 	private static $LOGIN_OK_COOKIE = "oc_ok";
-	// The sharding master, MASTER_FQ, etc. should currently be set manually or by an installer.
-	// TODO: Make this a configurable setting.
-	private static $masterfq = 'MASTER_FQ';
-	private static $cookiedomain = '.DOMAIN_FQ';
-	private static $masterurl = 'https://MASTER_FQ/';
 	
 	public static function post_login($parameters) {
 		
 		// Do nothing if we're sharding and not on the master
-		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
+		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
 			return true;
 		}
 		
@@ -55,7 +50,6 @@ class OC_USER_SAML_Hooks {
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($display_name, $email, $groups, $quota);
 			
-			// TODO: generalize check_user
 			self::user_redirect($userid);
 		}
 
@@ -98,6 +92,7 @@ class OC_USER_SAML_Hooks {
     		OC_Log::write('saml','Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ',OC_Log::DEBUG);
     		return false;
     	}
+    	$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
     	// Reject users we don't allow to autocreate an account
     	if(isset($uid) && trim($uid)!='' && !OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
     		$failCookieName = 'saml_auth_fail';
@@ -105,14 +100,13 @@ class OC_USER_SAML_Hooks {
     		$expire = 0;//time()+60*60*24*30;
     		$expired = time()-3600;
     		$path = '/';
-    		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
-    		setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $domain, false, false);
-    		setcookie($userCookieName, $uid, $expire, $path, $domain, false, false);
+    		setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $cookiedomain, false, false);
+    		setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, false, false);
     		$spSource = 'default-sp';
     		$auth = new SimpleSAML_Auth_Simple($spSource);
     		OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
-    		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
-    			$auth->logout(self::$masterurl);
+    		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
+    			$auth->logout(!OCA\FilesSharding\Lib::getMasterURL());
     		}
     		else{
     			$auth->logout();
@@ -121,11 +115,17 @@ class OC_USER_SAML_Hooks {
     	}
     	// Create new user
     	$random_password = OC_Util::generateRandomBytes(20);
-    	OC_Log::write('saml','Creating new user: '.$uid, OC_Log::INFO);
+    	OC_Log::write('saml','Creating new user: '.$uid, OC_Log::WARN);
     	OC_User::createUser($uid, $random_password);
     	if(OC_User::userExists($uid)){
     		if($samlBackend->updateUserData){
     			self::update_user_data($uid, $samlBackend, $attrs, true);
+    			if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
+    				$master_site = OCA\FilesSharding\Lib::dbGetSite(null);
+    				$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $master_site, 0, null);
+    				OC_Log::write('saml','Setting server for new user: '.$master_site.":".$server_id, OC_Log::WARN);
+    				OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id, 0);
+    			}
     		}
 				self::setAttributes($attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
     	}
@@ -231,44 +231,45 @@ class OC_USER_SAML_Hooks {
   }
   
   private static function user_redirect($userid){
-  	
-  	// Only redirect if sharding is enabled and we're not on the master
-  	if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
-  		return;
-  	}
-  	 
-		$redirect = self::get_user_redirect($userid);
-		if(self::check_user("", "", $userid) && !empty($redirect)){
-			header('Location: ' . $redirect);
-			exit();
-		}
-	}
   
-	// TODO: generalize this - i.e. introduce placing algorithm - and move somewhere upstream - to catch username/password logins
-	private static function get_user_redirect($userid){
-		if($userid == "fror@dtu.dk"){
-			return "https://silo1.data.deic.dk/";
+		if(!OCP\App::isEnabled('files_sharding')){
+			return;
 		}
-		return null;
-	}
 
+		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
+		if(self::check_user("", "", $userid) && !empty($redirect)){
+			
+			if(!empty($redirect)){
+				$parsedRedirect = parse_url($redirect);
+				if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
+					$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect.$_SERVER['REQUEST_URI']);
+					OC_Log::write('saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
+					header("HTTP/1.1 301 Moved Permanently");
+					header('Location: ' . $redirect_full);
+					exit();
+				}
+			}
+		}
+	}
 
 	public static function logout($parameters) {
 		
-		if(OCP\App::isEnabled('files_sharding') && $_SERVER['HTTP_HOST']!==self::$masterfq){
-			return;
+		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
+			//return;
 		}
 		
 		self::unsetAttributes();
     $samlBackend = new OC_USER_SAML();
     if ($samlBackend->auth->isAuthenticated()) {
-      OC_Log::write('saml', 'Executing SAML logout', OC_Log::INFO);
+      OC_Log::write('saml', 'Executing SAML logout', OC_Log::WARN);
+			//unset($_COOKIE['SimpleSAMLAuthToken']);
+			//setcookie('SimpleSAMLAuthToken', '', time()-3600, \OC::$WEBROOT);
       $samlBackend->auth->logout();
     }
  		else{
 			session_destroy();
 			$session_id = session_id();
-			OC_Log::write('saml', 'Clearing session cookie '.$session_id, OC_Log::INFO);
+			OC_Log::write('saml', 'Clearing session cookie '.$session_id, OC_Log::WARN);
 			unset($_COOKIE[$session_id]);
 			setcookie($session_id, '', time()-3600, \OC::$WEBROOT);
 			setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/');
@@ -286,8 +287,8 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
 		
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
-		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
-		setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $domain, true);
+		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
+		setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
 	
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
@@ -304,8 +305,8 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
 		
-		$domain = (substr(self::$cookiedomain,0,8)==='.DOMAIN_'?null:self::$cookiedomain);
-		setcookie(self::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $domain);
+		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
+		setcookie(self::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $cookiedomain);
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
