@@ -48,7 +48,7 @@ class OC_USER_SAML_Hooks {
 			$groups = \OC_Group::getUserGroups($userid);
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
-			self::setAttributes($display_name, $email, $groups, $quota);
+			self::setAttributes($userid, $display_name, $email, $groups, $quota);
 			
 			self::user_redirect($userid);
 		}
@@ -127,7 +127,7 @@ class OC_USER_SAML_Hooks {
     				OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id, 0);
     			}
     		}
-				self::setAttributes($attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
+				self::setAttributes($uid, $attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota']);
     	}
     }
     else{
@@ -277,23 +277,31 @@ class OC_USER_SAML_Hooks {
     return true;
   }
   
+  	public static function setRedirectCookie(){
+			$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
+			$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
+			setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
+  	}
+  
   // For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
-   private static function setAttributes($saml_display_name, $saml_email, $saml_groups, $saml_quota) {
+   private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups, $saml_quota) {
 		/*$secure_cookie = \OC_Config::getValue("forcessl", false);
 		$expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 60 * 60 * 24 * 15);
 		setcookie("oc_display_name", $saml_display_name, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_mail", $saml_email, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_quota", $saml_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
-		
-		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
-		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
-		setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
+		 self::setRedirectCookie();
 	
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
 		$_SESSION["oc_groups"] = $saml_groups;
 		$_SESSION["oc_quota"] = $saml_quota;
+		if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
+			\OC_Util::setupFS();
+			$dataFolders = OCA\FilesSharding\Lib::dbGetDataFoldersList($user_id);
+			$_SESSION["oc_data_folders"] = $dataFolders;
+		}
    }
 
 	

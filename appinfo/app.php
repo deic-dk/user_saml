@@ -73,9 +73,9 @@ if (OCP\App::isEnabled('user_saml')) {
 		OC_Util::redirectToDefaultPage();
 	}
 
-	// Don't remember what this <2 condition was for... FO
 	// We load the login prompt only if we're stand-alone or on the sharding master
-	if (strlen($_SERVER['REQUEST_URI'])<=1 && !OCP\User::isLoggedIn() && /*strlen($_SERVER['REQUEST_URI'])<2 &&*/ \OCA\FilesSharding\Lib::isMaster()) {
+	if(/*strlen($_SERVER['REQUEST_URI'])<=1 &&*/ !OCP\User::isLoggedIn() &&
+		(!OCP\App::isEnabled('files_sharding') || \OCA\FilesSharding\Lib::isMaster())){
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
 	}
@@ -83,14 +83,17 @@ if (OCP\App::isEnabled('user_saml')) {
 	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($_SERVER['REQUEST_URI'])>1 &&
 	strpos($_SERVER['REQUEST_URI'], '/index.php/settings')===FALSE &&
 	strpos($_SERVER['REQUEST_URI'], 'logout')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/apps/files_sharding/ajax/')===FALSE){
+	strpos($_SERVER['REQUEST_URI'], '/ajax/')===FALSE &&
+	strpos($_SERVER['REQUEST_URI'], '/jqueryFileTree.php')===FALSE &&
+	strpos($_SERVER['REQUEST_URI'], '/ws/')===FALSE){
 		$userid = \OCP\User::getUser();
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(!empty($redirect)){
 			$parsedRedirect = parse_url($redirect);
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect.$_SERVER['REQUEST_URI']);
-				OC_Log::write('user_saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
+				OC_USER_SAML_Hooks::setRedirectCookie();
+				OC_Log::write('user_saml', 'Redirecting to '.$redirect_full, OC_Log::WARN);
 				header("HTTP/1.1 301 Moved Permanently");
 				header('Location: ' . $redirect_full);
 				exit();
