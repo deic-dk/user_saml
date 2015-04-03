@@ -119,6 +119,13 @@ class OC_USER_SAML extends OC_User_Backend {
 	}
 	
 	public function userExists($uid) {
+	
+		// This is only for ajax/ws calls when sharing
+		if(!\OCP\User::isLoggedIn() && \OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
+			$userExists = \OCA\FilesSharding\Lib::ws('userExists', array('user_id' => $uid));
+			return $userExists;
+		}
+		
 		$this->loadUser($uid);
 		return !empty($this->cache[$uid]);
 	}
