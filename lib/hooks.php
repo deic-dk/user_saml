@@ -28,7 +28,7 @@ class OC_USER_SAML_Hooks {
 	private static $LOGIN_OK_COOKIE = "oc_ok";
 	
 	public static function post_login($parameters) {
-		
+				
 		// Do nothing if we're sharding and not on the master
 		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
 			return true;
@@ -131,7 +131,7 @@ class OC_USER_SAML_Hooks {
     	}
     }
     else{
-    	if($samlBackend->updateUserData){
+       	if($samlBackend->updateUserData){
     		self::update_user_data($uid, $samlBackend, $attrs, false);
     	}
     }
@@ -299,8 +299,16 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_quota"] = $saml_quota;
 		if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
 			\OC_Util::setupFS();
+			// Let slaves know which folders are data folders
 			$dataFolders = OCA\FilesSharding\Lib::dbGetDataFoldersList($user_id);
 			$_SESSION["oc_data_folders"] = $dataFolders;
+			// Have slaves use the same numeric ID for "storages".
+			$view = \OC\Files\Filesystem::getView();
+			$rootInfo = $view->getFileInfo('');
+			$storageId = $rootInfo->getStorage()->getId();
+			$numericStorageId = OC\Files\Cache\Storage::getNumericStorageId($storageId);
+			$_SESSION["oc_storage_id"] = $storageId;
+			$_SESSION["oc_numeric_storage_id"] = $numericStorageId;
 		}
    }
 
@@ -319,6 +327,9 @@ class OC_USER_SAML_Hooks {
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
 		unset($_SESSION["oc_quota"]);
+		unset($_SESSION["oc_data_folders"]);
+		unset($_SESSION["oc_storage_id"]);
+		unset($_SESSION["oc_numeric_storage_id"]);
 	}
 
 	private static function update_mail($uid, $email) {
