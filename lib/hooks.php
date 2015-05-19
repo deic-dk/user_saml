@@ -47,6 +47,10 @@ class OC_USER_SAML_Hooks {
 			$email = \OCP\Config::getUserValue($userid, 'settings', 'email');
 			$groups = \OC_Group::getUserGroups($userid);
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
+			
+			OC_Util::teardownFS($userid);
+			OC_Util::setupFS($userid);
+			
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota);
 			
