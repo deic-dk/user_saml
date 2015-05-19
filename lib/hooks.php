@@ -118,6 +118,8 @@ class OC_USER_SAML_Hooks {
     	OC_Log::write('saml','Creating new user: '.$uid, OC_Log::WARN);
     	OC_User::createUser($uid, $random_password);
     	if(OC_User::userExists($uid)){
+    		$userDir = '/'.$uid.'/files';
+    		\OC\Files\Filesystem::init($uid, $userDir);
     		if($samlBackend->updateUserData){
     			self::update_user_data($uid, $samlBackend, $attrs, true);
     			if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
@@ -192,7 +194,7 @@ class OC_USER_SAML_Hooks {
 	}
 	
 	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
-		OC_Util::setupFS($uid);
+		//OC_Util::setupFS($uid);
 		OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
 		if(isset($attributes['email'])) {
 			self::update_mail($uid, $attributes['email']);
@@ -298,7 +300,7 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_groups"] = $saml_groups;
 		$_SESSION["oc_quota"] = $saml_quota;
 		if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
-			\OC_Util::setupFS();
+			//\OC_Util::setupFS();
 			// Let slaves know which folders are data folders
 			$dataFolders = OCA\FilesSharding\Lib::dbGetDataFoldersList($user_id);
 			$_SESSION["oc_data_folders"] = $dataFolders;
