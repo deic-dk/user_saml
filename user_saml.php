@@ -78,21 +78,33 @@ class OC_USER_SAML extends OC_User_Backend {
 		}
 
 		$attributes = $this->auth->getAttributes();
-
+		
+		// Translate number code friendly name. TODO: get rid of this hard-coded path
+		include "/usr/local/www/simplesamlphp/attributemap/name2oid.php";
+		
 		foreach($this->usernameMapping as $usernameMapping) {
 			if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
 				$uid = $attributes[$usernameMapping][0];
 				OC_Log::write('saml','Authenticated user '.$uid,OC_Log::DEBUG);
 				return $uid;
 			}
+			if(array_key_exists($usernameMapping, $attributemap)){
+				$friendlyAttribute = $attributemap[$usernameMapping];
+				if (array_key_exists($friendlyAttribute, $attributes) && !empty($attributes[$friendlyAttribute][0])) {
+					$uid = $attributes[$friendlyAttribute][0];
+					OC_Log::write('saml','Authenticated user '.$uid,OC_Log::DEBUG);
+					return $uid;
+				}
+			}
 		}
-
+		
 		OC_Log::write('saml','Not found attribute used to get the username at the requested saml attribute assertion',OC_Log::DEBUG);
 		$secure_cookie = OC_Config::getValue("forcessl", false);
 		$expires = time() + OC_Config::getValue('remember_login_cookie_lifetime', 60*60*24*15);
 		setcookie("user_saml_logged_in", "1", $expires, '', '', $secure_cookie);
 
 		return false;
+
 	}
 	
 	
