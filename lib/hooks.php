@@ -67,7 +67,9 @@ class OC_USER_SAML_Hooks {
     //$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
     //error_log($email, 1, 'cbri@dtu.dk', $headers);
     
-    $usernameFound = false;
+    $sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
+    include $sspPath."/attributemap/name2oid.php";
+		$usernameFound = false;
     foreach($samlBackend->usernameMapping as $usernameMapping) {
     	if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
     		$usernameFound = true;
@@ -75,6 +77,15 @@ class OC_USER_SAML_Hooks {
     		OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
     		break;
     	}
+			if(array_key_exists($usernameMapping, $attributemap)){
+				$attributeCode = $attributemap[$usernameMapping];
+				if (array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
+					$usernameFound = true;
+					$uid = $attributes[$attributeCode][0];
+    			OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
+					break;
+				}
+			}
     }
     
     if (!$usernameFound || $uid !== $userid) {
