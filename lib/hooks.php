@@ -47,6 +47,7 @@ class OC_USER_SAML_Hooks {
 			$email = \OCP\Config::getUserValue($userid, 'settings', 'email');
 			$groups = \OC_Group::getUserGroups($userid);
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
+			$free_quota = \OC_Preferences::getValue($userid, 'files_accounting','freequota');
 			
 			OC_Util::teardownFS($userid);
 			OC_Util::setupFS($userid);
@@ -67,9 +68,7 @@ class OC_USER_SAML_Hooks {
     //$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
     //error_log($email, 1, 'cbri@dtu.dk', $headers);
     
-    $sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
-    include $sspPath."/attributemap/name2oid.php";
-		$usernameFound = false;
+    $usernameFound = false;
     foreach($samlBackend->usernameMapping as $usernameMapping) {
     	if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
     		$usernameFound = true;
@@ -77,15 +76,6 @@ class OC_USER_SAML_Hooks {
     		OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
     		break;
     	}
-			if(array_key_exists($usernameMapping, $attributemap)){
-				$attributeCode = $attributemap[$usernameMapping];
-				if (array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
-					$usernameFound = true;
-					$uid = $attributes[$attributeCode][0];
-    			OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
-					break;
-				}
-			}
     }
     
     if (!$usernameFound || $uid !== $userid) {
@@ -204,6 +194,12 @@ class OC_USER_SAML_Hooks {
 			$result['quota'] = $samlBackend->defaultQuota;
 			OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, OCP\Util::DEBUG);
 		}
+
+		$result['freequota'] = '';
+		if (empty($result['freequota']) && !empty($samlBackend->freeQuota)) {
+		  $result['freequota'] = $samlBackend->freeQuota;
+		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::DEBUG);
+		}
 	
 		return $result;	
 	}
@@ -229,6 +225,9 @@ class OC_USER_SAML_Hooks {
 		}
 		if (isset($attributes['quota'])) {
 			self::update_quota($uid, $attributes['quota']);
+		}
+		if (isset($attributes['freequota'])) {
+			self::update_free_quota($uid, $attributes['freequota']);
 		}
 	}
 
@@ -412,4 +411,14 @@ class OC_USER_SAML_Hooks {
 		}
 	}
 
+	private static function update_free_quota($uid, $free_quota) {
+		$user_free_quota = OC_Preferences::getValue($uid, 'files_accounting', 'freequota'); 
+		$free_quota_exceed = OC_Preferences::getValue($uid, 'files_accounting', 'freequotaexceed');
+		if (!empty($free_quota) && !isset($user_free_quota) && !isset($free_quota_exceed)) {
+			\OCP\Config::setUserValue($uid, 'files_accounting', 'freequota', $free_quota);
+		}
+	}
+
+
 }
+
