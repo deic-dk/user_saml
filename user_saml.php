@@ -38,7 +38,7 @@ class OC_USER_SAML extends OC_User_Backend {
 	public $defaultQuota;
 	public $groupMapping;
 	public $auth;
-
+	public $freeQuota;
 
 	public function __construct() {
 		$this->sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
@@ -56,7 +56,7 @@ class OC_USER_SAML extends OC_User_Backend {
 		$this->quotaMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_quota_mapping', '')));
 		$this->defaultQuota = OCP\Config::getAppValue('user_saml', 'saml_default_quota', '');
 		$this->groupMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_group_mapping', '')));
-
+		$this->freeQuota = OCP\Config::getAppValue('files_accounting', 'gift', ''); 
 		if (!empty($this->sspPath) && !empty($this->spSource)) {
 			include_once $this->sspPath."/lib/_autoload.php";
 
@@ -164,3 +164,4 @@ class OC_USER_SAML extends OC_User_Backend {
 	
 	
 }
+

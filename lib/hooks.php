@@ -77,9 +77,7 @@ class OC_USER_SAML_Hooks {
     //$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
     //error_log($email, 1, 'cbri@dtu.dk', $headers);
     
-    $sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
-    include $sspPath."/attributemap/name2oid.php";
-		$usernameFound = false;
+    $usernameFound = false;
     foreach($samlBackend->usernameMapping as $usernameMapping) {
     	if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
     		$usernameFound = true;
@@ -229,6 +227,12 @@ class OC_USER_SAML_Hooks {
 		if (empty($result['quota']) && !empty($samlBackend->defaultQuota)) {
 			$result['quota'] = $samlBackend->defaultQuota;
 			OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, OCP\Util::DEBUG);
+		}
+
+		$result['freequota'] = '';
+		if (empty($result['freequota']) && !empty($samlBackend->freeQuota)) {
+		  $result['freequota'] = $samlBackend->freeQuota;
+		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::DEBUG);
 		}
 
 		$result['freequota'] = '';
@@ -460,3 +464,4 @@ class OC_USER_SAML_Hooks {
 
 
 }
+
