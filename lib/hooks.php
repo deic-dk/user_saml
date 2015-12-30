@@ -235,12 +235,6 @@ class OC_USER_SAML_Hooks {
 		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::DEBUG);
 		}
 
-		$result['freequota'] = '';
-		if (empty($result['freequota']) && !empty($samlBackend->freeQuota)) {
-		  $result['freequota'] = $samlBackend->freeQuota;
-		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::DEBUG);
-		}
-	
 		return $result;	
 	}
 	

@@ -14,6 +14,13 @@ $oldPassword = isset($_POST['oldpassword']) ? $_POST['oldpassword'] : '';
 
 OC_Log::write('ChangePassword','Changing password for: '.$username, \OC_Log::INFO);
 
+$cracklibCheck = shell_exec("echo $password | cracklib-check");
+if(substr($cracklibCheck, -4)!=": OK"){
+	\OC_JSON::error(array("data" => array("message" => $cracklibCheck)));
+	exit();
+}
+
+
 /*if (!\OC_User::checkPassword($username, $oldPassword)) {
 	$l = new \OC_L10n('settings');
 	\OC_JSON::error(array("data" => array("message" => $l->t("Wrong password")) ));
