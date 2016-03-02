@@ -12,9 +12,11 @@ $username = OC_User::getUser();
 $password = isset($_POST['personal-password']) ? $_POST['personal-password'] : null;
 $oldPassword = isset($_POST['oldpassword']) ? $_POST['oldpassword'] : '';
 
-OC_Log::write('ChangePassword','Changing password for: '.$username, \OC_Log::WARN);
 
-$cracklibCheck = shell_exec("echo $password | cracklib-check | xargs echo -n");
+$cracklibCheck = shell_exec("echo $password | /usr/local/sbin/cracklib-check 2>&1 | xargs echo -n");
+
+OC_Log::write('ChangePassword','Changing password for: '.$username.":".$cracklibCheck, \OC_Log::WARN);
+
 if(substr($cracklibCheck, -4)!=": OK"){
 	\OC_JSON::error(array("data" => array("message" => $cracklibCheck)));
 	exit();
