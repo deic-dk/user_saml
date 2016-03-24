@@ -30,6 +30,17 @@ if(substr($cracklibCheck, -4)!=": OK"){
 }*/
 
 if (!is_null($password) && \OC_User::setPassword($username, $password)) {
+	if(\OCP\App::isEnabled('files_sharding')){
+		if(\OCA\FilesSharding\Lib::isMaster() && !\OCA\FilesSharding\Lib::onServerForUser($username)){
+			// Update on the home server (to allow local/independent login)
+			$serverURL = \OCA\FilesSharding\Lib::getServerForUser($username, true);
+			$pwOk = ws('set_pw_hash', array('user_id'=>$user_id), true, true, $serverURL);
+			if($pwOk['status']!='success'){
+				OC_Log::write('ChangePassword','ERROR: Could not change password for: '.
+				$username." on ".$serverURL, \OC_Log::ERROR);
+			}
+		}
+	}
 	\OC_JSON::success();
 } else {
 	\OC_JSON::error();
