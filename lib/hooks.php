@@ -56,13 +56,13 @@ class OC_USER_SAML_Hooks {
 			$email = \OCP\Config::getUserValue($userid, 'settings', 'email');
 			$groups = \OC_Group::getUserGroups($userid);
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
-			$free_quota = \OC_Preferences::getValue($userid, 'files_accounting','freequota');
+			$freequota = \OC_Preferences::getValue($userid, 'files_accounting','freequota');
 			
 			OC_Util::teardownFS($userid);
 			OC_Util::setupFS($userid);
 			
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
-			self::setAttributes($userid, $display_name, $email, $groups, $quota, $free_quota);
+			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
 			self::user_redirect($userid);
 		}
@@ -72,11 +72,11 @@ class OC_USER_SAML_Hooks {
     }
 
 		$attributes = $samlBackend->auth->getAttributes();
-    
+
     //$email = "<pre>" . print_r($attributes, 1) . "</pre>";
     //$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
     //error_log($email, 1, 'cbri@dtu.dk', $headers);
-    
+
     $usernameFound = false;
     foreach($samlBackend->usernameMapping as $usernameMapping) {
     	if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
@@ -93,12 +93,12 @@ class OC_USER_SAML_Hooks {
     		break;
     	}
     }
-    
+
     if (!$usernameFound || $uid !== $userid) {
     	return false;
     }
 
-		$attrs = self::get_user_attributes($uid, $samlBackend);    
+		$attrs = self::get_user_attributes($uid, $samlBackend);
 
     if(!$ocUserDatabase->userExists($uid)){
       // If autocreate is not enabled - back off
@@ -226,13 +226,13 @@ class OC_USER_SAML_Hooks {
 		}
 		if (empty($result['quota']) && !empty($samlBackend->defaultQuota)) {
 			$result['quota'] = $samlBackend->defaultQuota;
-			OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, OCP\Util::DEBUG);
+			OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, OCP\Util::WARN);
 		}
 
 		$result['freequota'] = '';
-		if (empty($result['freequota']) && !empty($samlBackend->freeQuota)) {
-		  $result['freequota'] = $samlBackend->freeQuota;
-		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::DEBUG);
+		if (!empty($samlBackend->defaultFreeQuota)) {
+		  $result['freequota'] = $samlBackend->defaultFreeQuota;
+		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::WARN);
 		}
 
 		return $result;	
@@ -261,7 +261,7 @@ class OC_USER_SAML_Hooks {
 			self::update_quota($uid, $attributes['quota']);
 		}
 		if (isset($attributes['freequota'])) {
-			self::update_free_quota($uid, $attributes['freequota']);
+			self::update_freequota($uid, $attributes['freequota']);
 		}
 	}
 
@@ -334,13 +334,13 @@ class OC_USER_SAML_Hooks {
   	}
   
   // For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
-   private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups, $saml_quota, $saml_free_quota) {
+   private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups, $saml_quota, $saml_freequota) {
 		/*$secure_cookie = \OC_Config::getValue("forcessl", false);
 		$expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 60 * 60 * 24 * 15);
 		setcookie("oc_display_name", $saml_display_name, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_mail", $saml_email, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_quota", $saml_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
-		setcookie("oc_free_quota", $saml_free_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
+		setcookie("oc_freequota", $saml_freequota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
 		 self::setRedirectCookie();
 	
@@ -348,7 +348,7 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_mail"] = $saml_email;
 		$_SESSION["oc_groups"] = $saml_groups;
 		$_SESSION["oc_quota"] = $saml_quota;
-		$_SESSION["oc_free_quota"] = $saml_free_quota;
+		$_SESSION["oc_freequota"] = $saml_freequota;
 		if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
 			//\OC_Util::setupFS();
 			// Let slaves know which folders are data folders
@@ -372,14 +372,14 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_mail", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
-		setcookie("oc_free_quota", '', $expires, \OC::$WEBROOT);	
+		setcookie("oc_freequota", '', $expires, \OC::$WEBROOT);	
 		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
 		setcookie(self::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $cookiedomain);
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
 		unset($_SESSION["oc_quota"]);
-		unset($_SESSION["oc_free_quota"]);
+		unset($_SESSION["oc_freequota"]);
 		unset($_SESSION["oc_data_folders"]);
 		unset($_SESSION["oc_storage_id"]);
 		unset($_SESSION["oc_numeric_storage_id"]);
@@ -443,19 +443,15 @@ class OC_USER_SAML_Hooks {
 	}
 	
 	private static function update_quota($uid, $quota) {
-		if (!empty($quota)) {
-			\OCP\Config::setUserValue($uid, 'files', 'quota', \OCP\Util::computerFileSize($quota));
+		if (isset($quota)) {
+			\OCP\Config::setUserValue($uid, 'files', 'quota', $quota);
 		}
 	}
 
-	private static function update_free_quota($uid, $free_quota) {
-		$user_free_quota = OC_Preferences::getValue($uid, 'files_accounting', 'freequota'); 
-		$free_quota_exceed = OC_Preferences::getValue($uid, 'files_accounting', 'freequotaexceed');
-		if (!empty($free_quota) && !isset($user_free_quota) && !isset($free_quota_exceed)) {
-			\OCP\Config::setUserValue($uid, 'files_accounting', 'freequota', $free_quota);
+	private static function update_freequota($uid, $freequota) {
+		if (isset($freequota)) {
+			\OCP\Config::setUserValue($uid, 'files_accounting', 'freequota', $freequota);
 		}
 	}
-
-
 }
 
