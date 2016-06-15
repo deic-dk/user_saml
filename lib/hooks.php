@@ -64,6 +64,12 @@ class OC_USER_SAML_Hooks {
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
+			OC_Log::write('saml','Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
+			if($samlBackend->updateUserData){
+				$attrs = self::get_user_attributes($userid, $samlBackend);
+				self::update_user_data($userid, $samlBackend, $attrs, false);
+			}
+			
 			self::user_redirect($userid);
 		}
 
@@ -154,7 +160,8 @@ class OC_USER_SAML_Hooks {
     	}
     }
     else{
-       	if($samlBackend->updateUserData){
+    	OC_Log::write('saml','Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
+      if($samlBackend->updateUserData){
     		self::update_user_data($uid, $samlBackend, $attrs, false);
     	}
     }
@@ -183,11 +190,11 @@ class OC_USER_SAML_Hooks {
 		foreach ($samlBackend->displayNameMapping as $displayNameMapping) {
 			$dn_attributes = explode(" ", $displayNameMapping);
 			foreach($dn_attributes as $dn_mapping){
+				$attributeCode = self::getAtributeCode($dn_mapping);
 				if (array_key_exists($dn_mapping, $attributes) && !empty($attributes[$dn_mapping][0])) {
 					$result['display_name'] .= " ".$attributes[$dn_mapping][0];
 				}
-				$attributeCode = self::getAtributeCode($dn_mapping);
-				if (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
+				elseif (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
 					$result['display_name'] .= " ".$attributes[$attributeCode][0];
 				}
 			}
@@ -216,13 +223,13 @@ class OC_USER_SAML_Hooks {
 					$result['quota'] = $attributes[$quotaMapping][0];
 					break;
 				}
-				$attributeCode = self::getAtributeCode($mailMapping);
+				$attributeCode = self::getAtributeCode($quotaMapping);
 				if (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
 					$result['quota'] = $attributes[$attributeCode][0];
 					break;
 				}
 			}
-			OCP\Util::writeLog('saml','Current quota: "'.$result['quota'].'" for user: '.$uid, OCP\Util::DEBUG);
+			OCP\Util::writeLog('saml','Current quota: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
 		}
 		if (empty($result['quota']) && !empty($samlBackend->defaultQuota)) {
 			$result['quota'] = $samlBackend->defaultQuota;
@@ -241,15 +248,15 @@ class OC_USER_SAML_Hooks {
 	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
 		//OC_Util::setupFS($uid);
 		OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
-		if(isset($attributes['email'])) {
+		if(!empty($attributes['email'])) {
 			self::update_mail($uid, $attributes['email']);
 		}
-		if(isset($attributes['groups'])) {
+		if(!empty($attributes['groups'])) {
 			self::update_groups($uid, $attributes['groups'], $samlBackend->protectedGroups, false);
 		}
 		// Check if a custom displayname has been set before updating the displayname with information from SAML
 		// This is clumsy, but, for some reason, getDisplayName() doesn't work here. - CB
-		if (isset($attributes['display_name'])) {
+		if (!empty($attributes['display_name'])) {
 			$query = OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
 			$result = $query->execute(array($uid))->fetchAll();
 			$displayName = trim($result[0]['displayname'], ' ');
@@ -257,10 +264,10 @@ class OC_USER_SAML_Hooks {
 				self::update_display_name($uid, $attributes['display_name']);
 			}
 		}
-		if (isset($attributes['quota'])) {
+		if (!empty($attributes['quota'])) {
 			self::update_quota($uid, $attributes['quota']);
 		}
-		if (isset($attributes['freequota'])) {
+		if (!empty($attributes['freequota'])) {
 			self::update_freequota($uid, $attributes['freequota']);
 		}
 	}
@@ -395,13 +402,14 @@ class OC_USER_SAML_Hooks {
 	
 	private static function update_groups($uid, $groups, $protectedGroups=array(), $just_created=false) {
 	
-	  if(!$just_created) {
+	  if(!$just_created && !empty($groups) && !\OCP\App::isEnabled('user_group_admin')) {
+	  	OC_Log::write('saml','Restricting group membership of '.$uid.' to the groups '.serialize($groups), OC_Log::WARN);
 	    $old_groups = OC_Group::getUserGroups($uid);
 	    foreach($old_groups as $group) {
 	      if(!in_array($group, $protectedGroups) && !in_array($group, $groups)) {
 				// This does not affect groups from user_group_admin
 	      	OC_Group::removeFromGroup($uid,$group);
-	        OC_Log::write('saml','Removed "'.$uid.'" from the group "'.$group.'"', OC_Log::DEBUG);
+	        OC_Log::write('saml','Removed "'.$uid.'" from the group "'.$group.'"', OC_Log::WARN);
 	      }
 	    }
 	  }
@@ -419,7 +427,7 @@ class OC_USER_SAML_Hooks {
 						else{
 							OC_Group::createGroup($group);
 						}
-						OC_Log::write('saml','New group created: '.$group, OC_Log::DEBUG);
+						OC_Log::write('saml','New group created: '.$group, OC_Log::WARN);
 	        }
 	        if(OCP\App::isEnabled('user_group_admin')){
 	        	OC_User_Group_Admin_Util::addToGroup($uid, $group);
@@ -427,7 +435,7 @@ class OC_USER_SAML_Hooks {
 	        else{
 	        	OC_Group::addToGroup($uid, $group);
 	        }
-	        OC_Log::write('saml','Added "'.$uid.'" to the group "'.$group.'"', OC_Log::DEBUG);
+	        OC_Log::write('saml','Added "'.$uid.'" to the group "'.$group.'"', OC_Log::WARN);
 	      }
 	    }
 	  }
@@ -443,13 +451,13 @@ class OC_USER_SAML_Hooks {
 	}
 	
 	private static function update_quota($uid, $quota) {
-		if (isset($quota)) {
+		if (!empty($quota)) {
 			\OCP\Config::setUserValue($uid, 'files', 'quota', $quota);
 		}
 	}
 
 	private static function update_freequota($uid, $freequota) {
-		if (isset($freequota)) {
+		if (!empty($freequota)) {
 			\OCP\Config::setUserValue($uid, 'files_accounting', 'freequota', $freequota);
 		}
 	}
