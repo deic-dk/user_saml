@@ -264,7 +264,7 @@ class OC_USER_SAML_Hooks {
 				self::update_display_name($uid, $attributes['display_name']);
 			}
 		}
-		if (!empty($attributes['quota'])) {
+		if (!empty($attributes['quota']) || $attributes['quota']==='0') {
 			self::update_quota($uid, $attributes['quota']);
 		}
 		if (!empty($attributes['freequota'])) {
@@ -451,7 +451,7 @@ class OC_USER_SAML_Hooks {
 	}
 	
 	private static function update_quota($uid, $quota) {
-		if (!empty($quota)) {
+		if (!empty($quota) || $attributes['quota']==='0') {
 			\OCP\Config::setUserValue($uid, 'files', 'quota', $quota);
 		}
 	}
