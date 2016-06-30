@@ -104,25 +104,91 @@ if (OCP\App::isEnabled('user_saml')) {
 }
 
 /*
- * Checks if requiring SAML authentication on current URL makes sense when
+* Checks if requiring SAML authentication on current URL makes sense when
 * forceLogin is set.
 *
-* Disables it when using the command line too
+* Disables it when using the command line too.
+* 
+* Most of this function contributed by David.Jericho@aarnet.edu.au
 */
 function shouldEnforceAuthentication()
-{
-	if (OC::$CLI) {
+ {
+	if(OC::$CLI){
+		return false;
+	}
+	$script_filename = basename($_SERVER['SCRIPT_FILENAME']);
+	$forceLogin = !in_array($script_filename,
+		array(
+			'cron.php',
+			'public.php',
+			'remote.php',
+			'status.php',
+		)
+	);
+
+	if(OCP\App::isEnabled('files_sharding') && isset($_COOKIE[\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE])){
+		OC_Log::write('saml','Redirected from master, already logged in.', OC_Log::DEBUG);
+		return false;
+		}
+
+	if($forceLogin){
+		OC_Log::write('saml','Consider a forced login because SCRIPT FILENAME scripts not found; script_filename ' . basename($_SERVER['SCRIPT_FILENAME']), OC_Log::DEBUG);
+	}
+
+	/*
+	* If there's no referer, the URI and referer tests below can never evaluate as true, so return now
+	*/
+	if(!isset($_SERVER['HTTP_REFERER'])){
+		OC_Log::write('saml','No referer set, so returning a status for forced login status for ' . $_SERVER['REQUEST_URI'], OC_Log::DEBUG);
+		return $forceLogin;
+	};
+
+	/*
+	* This is the tricky bit in OC7 as it uses translations.php via index.php, but this is how the
+	* forced login is done on the landing page too
+	*/
+
+	/* First case - translations.php run through index.php - permit without login */
+	$request_uri = basename($_SERVER['REQUEST_URI']);
+	if($request_uri === "translations.php" && $script_filename === "index.php"){
+		OC_Log::write('saml','translations.php accessed through index.php, so don\'t force login', OC_Log::DEBUG);
 		return false;
 	}
 
-	$script = basename($_SERVER['SCRIPT_FILENAME']);
-	return !in_array($script,
-			array(
-					'cron.php',
-					'public.php',
-					'remote.php',
-					'status.php',
-			)
-	);
+	/* Second case - oc.js with the asset pipeline refered from public.php - permit without login
+	* Set $referer as all further cases require it
+	*/
+	$referer = basename($_SERVER['HTTP_REFERER']);
+	if(preg_match( "/^oc.js\?v=.*$/", $request_uri ) && preg_match ("/^public.php\?service=files.*$/", $referer)){
+		OC_Log::write('saml','oc.js refered from public.php, so don\'t force login', OC_Log::DEBUG);
+		return false;
+	}
+
+	/* Third case - list.php refered from public.php - permit without login */
+	if(preg_match( "/^list.php\?t=[a-z0-9]*.*$/", $request_uri ) && preg_match ("/^public.php\?service=files.*$/", $referer)) {
+		OC_Log::write('saml','list.php refered from public.php, so don\'t force login', OC_Log::DEBUG);
+		return false;
+	}
+
+	/* Fourth case - share.php refered from public.php - permit without login */
+	if ( preg_match( "/^share.php\?fetch=getItemsSharedStatuses*.*$/", $request_uri ) && preg_match ("/^public.php\?service=files.*$/", $referer) ) {
+		OC_Log::write('saml','share.php refered from public.php, so don\'t force login', OC_Log::DEBUG);
+		return false;
+	}
+		/* Fifth case, public folder upload - list.php refered from public.php - permit without login */
+		if ( preg_match( "/^list.php\?t=[a-z0-9]*.*$/", $request_uri ) && preg_match ("/^public.php\?service=files.*$/", $referer) ) {
+						OC_Log::write('saml','list.php refered from public.php, so don\'t force login', OC_Log::DEBUG);
+						return false;
+		}
+		/* Sixth case, public folder upload - upload.php refered from public.php - permit without login */
+		if ( preg_match( "/^upload.php$/", $request_uri ) && preg_match ("/^public.php\?service=files.*$/", $referer) ) {
+						OC_Log::write('saml','upload.php refered from public.php, so don\'t force login', OC_Log::DEBUG);
+						return false;
+		}
+	if ( $forceLogin ) {
+		OC_Log::write('saml','forceLogin because forceLogin is still set; request_uri ' . $request_uri . ', referer ' . $referer . ', script_filename '. $script_filename, OC_Log::INFO);
+	}
+
+	return $forceLogin;
 }
 

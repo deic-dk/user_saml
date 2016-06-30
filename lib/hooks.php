@@ -24,8 +24,6 @@
  * This class contains all hooks.
  */
 class OC_USER_SAML_Hooks {
-
-	private static $LOGIN_OK_COOKIE = "oc_ok";
 	
 	static private function getAtributeCode($friendlyName){
 		$sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
@@ -337,7 +335,7 @@ class OC_USER_SAML_Hooks {
   	public static function setRedirectCookie(){
 			$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
 			$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
-			setcookie(self::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
+			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
   	}
   
   // For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
@@ -349,7 +347,9 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_quota", $saml_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_freequota", $saml_freequota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
-		 self::setRedirectCookie();
+   	if(OCP\App::isEnabled('files_sharding')){
+   		self::setRedirectCookie();
+   	}
 	
 		$_SESSION["oc_display_name"] = $saml_display_name;
 		$_SESSION["oc_mail"] = $saml_email;
@@ -380,8 +380,11 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
 		setcookie("oc_freequota", '', $expires, \OC::$WEBROOT);	
-		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
-		setcookie(self::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $cookiedomain);
+		$cookiedomain = null;
+		if(OCP\App::isEnabled('files_sharding')){
+			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $cookiedomain);
+			$cookiedomain = \OCA\FilesSharding\Lib::getCookieDomain();
+		}
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
 		unset($_SESSION["oc_groups"]);
