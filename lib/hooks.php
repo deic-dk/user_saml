@@ -227,7 +227,7 @@ class OC_USER_SAML_Hooks {
 					break;
 				}
 			}
-			OCP\Util::writeLog('saml','Current quota: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
+			OCP\Util::writeLog('saml','SAML quota: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
 		}
 		if (empty($result['quota']) && !empty($samlBackend->defaultQuota)) {
 			$result['quota'] = $samlBackend->defaultQuota;
@@ -262,11 +262,16 @@ class OC_USER_SAML_Hooks {
 				self::update_display_name($uid, $attributes['display_name']);
 			}
 		}
-		if (!empty($attributes['quota']) || $attributes['quota']==='0') {
-			self::update_quota($uid, $attributes['quota']);
-		}
-		if (!empty($attributes['freequota'])) {
+		if(!empty($attributes['freequota'])){
 			self::update_freequota($uid, $attributes['freequota']);
+		}
+		if(!empty($attributes['freequota']) && !empty($attributes['quota']) &&
+				(int)$attributes['freequota']>(int)$attributes['quota']){
+			$attributes['quota'] = $attributes['freequota'];
+		}
+		if(!empty($attributes['quota']) || $attributes['quota']==='0'){
+			OCP\Util::writeLog('saml','Updating quota to: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
+			self::update_quota($uid, $attributes['quota']);
 		}
 	}
 
