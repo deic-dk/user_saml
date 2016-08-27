@@ -41,7 +41,6 @@ class OC_USER_SAML_Hooks {
 			return true;
 		}
 		
-		$uid = '';
 		$userid = $parameters['uid'];
 		$samlBackend = new OC_USER_SAML();
 		 $ocUserDatabase = new OC_User_Database();
@@ -61,7 +60,8 @@ class OC_USER_SAML_Hooks {
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
-			OC_Log::write('saml','Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
+			OC_Log::write('saml','Updating user '.$userid.":".$samlBackend->updateUserData, OC_Log::WARN);
+			
 			if($samlBackend->updateUserData){
 				$attrs = self::get_user_attributes($userid, $samlBackend);
 				self::update_user_data($userid, $samlBackend, $attrs, false);
@@ -80,6 +80,7 @@ class OC_USER_SAML_Hooks {
 		//$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
 		//error_log($email, 1, 'cbri@dtu.dk', $headers);
 
+		$uid = '';
 		$usernameFound = false;
 		foreach($samlBackend->usernameMapping as $usernameMapping) {
 			if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
