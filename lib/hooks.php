@@ -199,6 +199,7 @@ class OC_USER_SAML_Hooks {
 				}
 			}
 		}
+		$result['display_name'] = trim($result['display_name']);
 	
 		$result['groups'] = array();
 		foreach ($samlBackend->groupMapping as $groupMapping) {
