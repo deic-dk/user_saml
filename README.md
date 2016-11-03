@@ -1,6 +1,8 @@
 INTRODUCTION
 ============
 
+This is a manual fork of https://github.com/owncloud/apps/tree/master/user_saml
+
 This App provide SAML authentication support based on the simpleSAMLphp SP software.
 
 
