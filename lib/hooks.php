@@ -60,7 +60,7 @@ class OC_USER_SAML_Hooks {
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
-			OC_Log::write('saml','Updating user '.$userid.":".$samlBackend->updateUserData, OC_Log::WARN);
+			OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".$samlBackend->updateUserData, OC_Log::WARN);
 			
 			if($samlBackend->updateUserData){
 				$attrs = self::get_user_attributes($userid, $samlBackend);
@@ -268,6 +268,7 @@ class OC_USER_SAML_Hooks {
 		if(!empty($attributes['freequota'])){
 			self::update_freequota($uid, $attributes['freequota']);
 		}
+		// Bump up quota if smaller than freequota
 		if(!empty($attributes['freequota']) && !empty($attributes['quota']) &&
 				(int)$attributes['freequota']>(int)$attributes['quota']){
 			$attributes['quota'] = $attributes['freequota'];
