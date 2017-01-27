@@ -448,7 +448,7 @@ class OC_USER_SAML_Hooks {
 						OC_Log::write('saml','New group created: '.$group, OC_Log::WARN);
 					}
 					if(OCP\App::isEnabled('user_group_admin')){
-						OC_User_Group_Admin_Util::addToGroup($uid, $group);
+						OC_User_Group_Admin_Util::addToGroup($uid, $group, '', '');
 					}
 					else{
 						OC_Group::addToGroup($uid, $group);
