@@ -290,7 +290,11 @@ class OC_USER_SAML_Hooks {
   // TODO: generalize this
 	private static function check_user($entitlement, $schacHomeOrganization, $mail){
 		error_log('Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement);
-		return substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or $mail == "fror@dtu.dk" or $mail == "uhsk@dtu.dk" or $mail == "no-jusa@aqua.dtu.dk" or $mail == "cbri@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or $mail == "migka@dtu.dk" or $mail == "no-dtma@dtu.dk" or $mail == "christian@cabo.dk" or $mail == "frederik@orellana.dk" or $mail == "no-elzi@kb.dk" or $mail == "no-svc@kb.dk";
+		return substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or
+		substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or
+		$mail == "fror@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or
+		$mail == "dtma@dtu.dk" or
+		$mail == "christian@orellana.dk" or $mail == "frederik@orellana.dk";
 	}
 	
 	// TODO: generalize this
@@ -310,16 +314,15 @@ class OC_USER_SAML_Hooks {
 
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(self::check_user("", "", $userid) && !empty($redirect)){
-			
-			if(!empty($redirect)){
-				$parsedRedirect = parse_url($redirect);
-				if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
-					$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect.$_SERVER['REQUEST_URI']);
-					OC_Log::write('saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
-					header("HTTP/1.1 301 Moved Permanently");
-					header('Location: ' . $redirect_full);
-					exit();
-				}
+			$uri = preg_replace('|^'.OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
+			$parsedRedirect = parse_url($redirect);
+			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
+				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
+				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
+				OC_Log::write('saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
+				header("HTTP/1.1 301 Moved Permanently");
+				header('Location: ' . $redirect_full);
+				exit();
 			}
 		}
 	}
