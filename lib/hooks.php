@@ -339,6 +339,10 @@ class OC_USER_SAML_Hooks {
 			OC_Log::write('saml', 'Executing SAML logout', OC_Log::WARN);
 			//unset($_COOKIE['SimpleSAMLAuthToken']);
 			//setcookie('SimpleSAMLAuthToken', '', time()-3600, \OC::$WEBROOT);
+			$session = \OC::$server->getUserSession();
+			$session->unsetMagicInCookie();
+			$session->setUser(null);
+			$session->setLoginName(null);
 			$samlBackend->auth->logout();
 		}
 		else{
