@@ -315,6 +315,10 @@ class OC_USER_SAML_Hooks {
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(self::check_user("", "", $userid) && !empty($redirect)){
 			$uri = preg_replace('|^'.OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
+			// The question mark is needed to not end up on slave login page
+			if($uri=='/'){
+				$uri = '/?';
+			}
 			$parsedRedirect = parse_url($redirect);
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');

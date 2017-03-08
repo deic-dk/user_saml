@@ -94,12 +94,16 @@ if (OCP\App::isEnabled('user_saml')) {
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(!empty($redirect)){
 			$uri = preg_replace('|^'.OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
+			// The question mark is needed to not end up on slave login page
+			if($uri=='/'){
+				$uri = '/?';
+			}
 			$parsedRedirect = parse_url($redirect);
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				OC_USER_SAML_Hooks::setRedirectCookie();
-				OC_Log::write('user_saml', 'Redirecting to '.$redirect_full, OC_Log::WARN);
+				OC_Log::write('user_saml', 'Redirecting to URL '.$redirect_full, OC_Log::WARN);
 				header("HTTP/1.1 301 Moved Permanently");
 				header('Location: ' . $redirect_full);
 				exit();
