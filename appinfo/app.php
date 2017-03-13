@@ -102,9 +102,10 @@ if (OCP\App::isEnabled('user_saml')) {
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
+				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				OC_USER_SAML_Hooks::setRedirectCookie();
 				OC_Log::write('user_saml', 'Redirecting to URL '.$redirect_full, OC_Log::WARN);
-				header("HTTP/1.1 301 Moved Permanently");
+				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
 			}

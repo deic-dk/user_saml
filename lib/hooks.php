@@ -151,7 +151,7 @@ class OC_USER_SAML_Hooks {
 						// This returns the master
 						//$site = OCA\FilesSharding\Lib::dbGetSite(null);
 						$site = self::choose_site_for_user($attributes);
-						$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $site, 0, null);
+						$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $attrs['email'], $site, 0, null);
 						OC_Log::write('saml','Setting server for new user: '.$master_site.":".$server_id, OC_Log::WARN);
 						OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id, 0);
 					}
@@ -323,8 +323,9 @@ class OC_USER_SAML_Hooks {
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
+				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				OC_Log::write('saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
-				header("HTTP/1.1 301 Moved Permanently");
+				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
 			}
