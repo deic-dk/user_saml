@@ -89,7 +89,9 @@ if (OCP\App::isEnabled('user_saml')) {
 	strpos($_SERVER['REQUEST_URI'], '/firstrunwizard/')===FALSE &&
 	strpos($_SERVER['REQUEST_URI'], '/ws/')===FALSE &&
 	strpos($_SERVER['REQUEST_URI'], '/sites/')===FALSE &&
-			strpos($_SERVER['REQUEST_URI'], '/apps/files_picocms/')===FALSE){
+	strpos($_SERVER['REQUEST_URI'], '/apps/files_picocms/')===FALSE &&
+	substr($_SERVER['REQUEST_URI'], -3)!='.js' &&
+	strpos($_SERVER['REQUEST_URI'], '/js/')===FALSE){
 		$userid = \OCP\User::getUser();
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(!empty($redirect)){
