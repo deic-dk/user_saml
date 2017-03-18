@@ -57,10 +57,12 @@ class OC_USER_SAML_Hooks {
 			OC_Util::teardownFS($userid);
 			OC_Util::setupFS($userid);
 			
-			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".join($groups).":".$quota, OC_Log::INFO);
+			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".
+				join($groups).":".$quota, OC_Log::INFO);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
-			OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".$samlBackend->updateUserData, OC_Log::WARN);
+			OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".
+				$samlBackend->updateUserData, OC_Log::WARN);
 			
 			if($samlBackend->updateUserData){
 				$attrs = self::get_user_attributes($userid, $samlBackend);
@@ -76,24 +78,20 @@ class OC_USER_SAML_Hooks {
 
 		$attributes = $samlBackend->auth->getAttributes();
 
-		//$email = "<pre>" . print_r($attributes, 1) . "</pre>";
-		//$headers = 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-		//error_log($email, 1, 'cbri@dtu.dk', $headers);
-
 		$uid = '';
 		$usernameFound = false;
 		foreach($samlBackend->usernameMapping as $usernameMapping) {
 			if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
 				$usernameFound = true;
 				$uid = $attributes[$usernameMapping][0];
-				OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
+				OC_Log::write('saml', 'Authenticated user '.$uid,OC_Log::INFO);
 				break;
 			}
 			$attributeCode = self::getAtributeCode($usernameMapping);
 			if (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
 				$usernameFound = true;
 				$uid = $attributes[$attributeCode][0];
-				OC_Log::write('saml','Authenticated user '.$uid,OC_Log::INFO);
+				OC_Log::write('saml', 'Authenticated user '.$uid, OC_Log::INFO);
 				break;
 			}
 		}
@@ -114,7 +112,7 @@ class OC_USER_SAML_Hooks {
 			$userManager->delete($uid);
 			// Reject invalid user names
 			if (preg_match( '/[^a-zA-Z0-9 _\.@\-]/', $uid)) {
-				OC_Log::write('saml','Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ',OC_Log::DEBUG);
+				OC_Log::write('saml', 'Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ', OC_Log::DEBUG);
 				return false;
 			}
 			$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
@@ -129,18 +127,18 @@ class OC_USER_SAML_Hooks {
 				setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, false, false);
 				$spSource = 'default-sp';
 				$auth = new SimpleSAML_Auth_Simple($spSource);
-				OC_Log::write('saml','Rejected user "'.$uid, OC_Log::ERROR);
+				OC_Log::write('saml', 'Rejected user '.$uid, OC_Log::ERROR);
 				if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
-					$auth->logout(!OCA\FilesSharding\Lib::getMasterURL());
+					//$auth->logout(!OCA\FilesSharding\Lib::getMasterURL());
 				}
 				else{
-					$auth->logout();
+					//$auth->logout();
 				}
 				return false;
 			}
 			// Create new user
 			$random_password = OC_Util::generateRandomBytes(20);
-			OC_Log::write('saml','Creating new user: '.$uid, OC_Log::WARN);
+			OC_Log::write('saml', 'Creating new user: '.$uid, OC_Log::WARN);
 			OC_User::createUser($uid, $random_password);
 			if(OC_User::userExists($uid)){
 				$userDir = '/'.$uid.'/files';
@@ -151,16 +149,19 @@ class OC_USER_SAML_Hooks {
 						// This returns the master
 						//$site = OCA\FilesSharding\Lib::dbGetSite(null);
 						$site = self::choose_site_for_user($attributes);
-						$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $attrs['email'], $site, 0, null);
-						OC_Log::write('saml','Setting server for new user: '.$master_site.":".$server_id, OC_Log::WARN);
-						OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id, 0);
+						$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $attrs['email'], $site,
+								OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY, null);
+						OC_Log::write('saml', 'Setting server for new user: '.$server_id, OC_Log::WARN);
+						OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id,
+						OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY,
+						OCA\FilesSharding\Lib::$USER_ACCESS_ALL);
 					}
 				}
 				self::setAttributes($uid, $attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota'], $attrs['freequota']);
 			}
 		}
 		else{
-			OC_Log::write('saml','Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
+			OC_Log::write('saml', 'Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
 			if($samlBackend->updateUserData){
 				self::update_user_data($uid, $samlBackend, $attrs, false);
 			}
@@ -171,6 +172,7 @@ class OC_USER_SAML_Hooks {
 	
 	private static function get_user_attributes($uid, $samlBackend) {
 		$attributes = $samlBackend->auth->getAttributes();
+		OC_Log::write('saml', 'SAML attributes: '.serialize($attributes), OC_Log::WARN);
 		$result = array();
 	
 		$result['email'] = '';
@@ -211,6 +213,12 @@ class OC_USER_SAML_Hooks {
 				$result['groups'] = array_merge($result['groups'], $attributes[$attributeCode]);
 			}
 		}
+		if (empty($result['groups']) && strpos($uid, '@')>0) {
+			$atIndex = strpos($uid, '@');
+			$domain = substr($uid, $atIndex+1);
+			OCP\Util::writeLog('saml','Using UID domain as group "'.$domain.'" for the user: '.$uid, OCP\Util::DEBUG);
+			$result['groups'] = array($domain);
+		}
 		if (empty($result['groups']) && !empty($samlBackend->defaultGroup)) {
 			$result['groups'] = array($samlBackend->defaultGroup);
 			OCP\Util::writeLog('saml','Using default group "'.$samlBackend->defaultGroup.'" for the user: '.$uid, OCP\Util::DEBUG);
@@ -248,7 +256,8 @@ class OC_USER_SAML_Hooks {
 	
 	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
 		//OC_Util::setupFS($uid);
-		OC_Log::write('saml','Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".implode("::", $samlBackend->protectedGroups),OC_Log::INFO);
+		OC_Log::write('saml', 'Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".
+			implode("::", $samlBackend->protectedGroups), OC_Log::INFO);
 		if(!empty($attributes['email'])) {
 			self::update_mail($uid, $attributes['email']);
 		}
@@ -278,20 +287,31 @@ class OC_USER_SAML_Hooks {
 			self::update_quota($uid, $attributes['quota']);
 		}
 	}
+	
+	private static function get_attribute($attribute, $attributes){
+		$ret = array_key_exists($attribute, $attributes)?$attributes[$attribute][0]:'';
+		if(empty($ret)){
+			$attributeCode = self::getAtributeCode($attribute);
+			$ret = array_key_exists($attributeCode, $attributes)?$attributes[$attributeCode][0]:'';
+			OC_Log::write('saml', 'Code: '.$attribute.'-->'.$attributeCode.'-->'.$ret, OC_Log::WARN);
+		}
+		return $ret;
+	}
 
   // TODO: generalize this
 	private static function check_user_attributes($attributes){
-		$entitlement = array_key_exists('eduPersonEntitlement' , $attributes) ? $attributes['eduPersonEntitlement'][0] : '';
-		$schacHomeOrganization = array_key_exists('schacHomeOrganization' , $attributes) ? $attributes['schacHomeOrganization'][0]: '';
-		$mail = array_key_exists('mail' , $attributes) ? $attributes['mail'][0]: '';
+		OC_Log::write('saml', 'Checking attributes: '.serialize($attributes), OC_Log::WARN);
+		$entitlement = self::get_attribute('eduPersonEntitlement', $attributes);
+		$schacHomeOrganization = self::get_attribute('schacHomeOrganization', $attributes);
+		$mail = self::get_attribute('mail', $attributes);
 		return self::check_user($entitlement, $schacHomeOrganization, $mail);
 	}
 
   // TODO: generalize this
 	private static function check_user($entitlement, $schacHomeOrganization, $mail){
-		error_log('Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement);
+		OC_Log::write('saml', 'Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement, OC_Log::WARN);
 		return substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or
-		substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or
+		substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or substr($mail, -8)==="@cern.ch" or
 		$mail == "fror@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or
 		$mail == "dtma@dtu.dk" or
 		$mail == "christian@orellana.dk" or $mail == "frederik@orellana.dk";
