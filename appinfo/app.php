@@ -74,11 +74,11 @@ if (OCP\App::isEnabled('user_saml')) {
 	}
 
 	// We load the login prompt only if we're stand-alone or on the sharding master
-	if(/*strlen($_SERVER['REQUEST_URI'])<=1 &&*/ !OCP\User::isLoggedIn() &&
-		(!OCP\App::isEnabled('files_sharding') || \OCA\FilesSharding\Lib::isMaster())){
+	//if(/*strlen($_SERVER['REQUEST_URI'])<=1 &&*/ !OCP\User::isLoggedIn() &&
+		//(!OCP\App::isEnabled('files_sharding') || \OCA\FilesSharding\Lib::isMaster())){
 		// Load js code in order to render the SAML link and to hide parts of the normal login form
 		OCP\Util::addScript('user_saml', 'utils');
-	}
+	//}
 	
 	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($_SERVER['REQUEST_URI'])>1 &&
 	strpos($_SERVER['REQUEST_URI'], '/index.php/settings')===FALSE &&
