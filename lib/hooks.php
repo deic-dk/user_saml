@@ -384,7 +384,9 @@ class OC_USER_SAML_Hooks {
 	public static function setRedirectCookie(){
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
 		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
-		setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires, \OC::$WEBROOT, $cookiedomain, true);
+		setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires,
+			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT,
+			$cookiedomain, true);
 	}
 
 	// For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
@@ -431,7 +433,13 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_freequota", '', $expires, \OC::$WEBROOT);	
 		$cookiedomain = null;
 		if(OCP\App::isEnabled('files_sharding')){
-			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "", $expires, \OC::$WEBROOT, $cookiedomain);
+			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "", $expires,
+				empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
+			$cookiedomain = \OCA\FilesSharding\Lib::getCookieDomain();
+		}
+		if(OCP\App::isEnabled('files_sharding')){
+			setcookie(\OCA\FilesSharding\Lib::$ACCESS_OK_COOKIE, "", $expires,
+			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
 			$cookiedomain = \OCA\FilesSharding\Lib::getCookieDomain();
 		}
 		unset($_SESSION["oc_display_name"]);
