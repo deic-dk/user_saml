@@ -34,6 +34,19 @@ class OC_USER_SAML_Hooks {
 		return null;
 	}
 	
+	public static function pre_login($parameters) {
+		// This just serves to avoid multiple warnings issued when
+		// OC_User::isLoggedIn() calls OC_User::login($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])
+		// and $_SERVER['PHP_AUTH_PW'] is empty, but $_SERVER['PHP_AUTH_USER'] is not.
+		// This scenario is used by the login mechanisms of chooser, and pre_login should be defined
+		// in that app. But for some reason, this one is called first...
+		// And we still get one login failed warning.
+		//OCP\Util::writeLog('saml','PRE: '.serialize($parameters), OCP\Util::WARN);
+		if(!empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW'])){
+			unset($_SERVER['PHP_AUTH_PW']);
+		}
+	}
+	
 	public static function post_login($parameters) {
 				
 		// Do nothing if we're sharding and not on the master

@@ -42,10 +42,20 @@ if (OCP\App::isEnabled('user_saml')) {
 		OC_Group::useBackend( new OC_User_Group_Admin_Backend() );
 	}
 
-	// register user backend
-	OC_User::useBackend( 'SAML' );
+	// register user backend for non-webdav access
+	if(!isset($_SERVER['REQUEST_URI']) ||
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/files/")!==0 &&
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0){
+		OC_User::useBackend( 'SAML' );
+	}
+	else{
+		//OC_User::clearBackends();
+		//OC_User::useBackend();
+		OC_User::useBackend( 'SAML' );
+	}
 
 	OC::$CLASSPATH['OC_USER_SAML_Hooks'] = 'user_saml/lib/hooks.php';
+	OCP\Util::connectHook('OC_User', 'pre_login', 'OC_USER_SAML_Hooks', 'pre_login');
 	OCP\Util::connectHook('OC_User', 'post_login', 'OC_USER_SAML_Hooks', 'post_login');
 	OCP\Util::connectHook('OC_User', 'logout', 'OC_USER_SAML_Hooks', 'logout');
 
