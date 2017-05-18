@@ -56,10 +56,10 @@ class OC_USER_SAML_Hooks {
 		
 		$userid = $parameters['uid'];
 		$samlBackend = new OC_USER_SAML();
-		 $ocUserDatabase = new OC_User_Database();
-		 // Redirect regardless of whether the user has authenticated with SAML or not.
-		 // Since this is a post_login hook, he will have authenticated in some way and have a valid session.
-		 if ($ocUserDatabase->userExists($userid)) {
+		$ocUserDatabase = new OC_User_Database();
+		// Redirect regardless of whether the user has authenticated with SAML or not.
+		// Since this is a post_login hook, he will have authenticated in some way and have a valid session.
+		if ($ocUserDatabase->userExists($userid)) {
 			// Set user attributes for sharding
 			$display_name = \OCP\User::getDisplayName($userid);
 			$email = \OCP\Config::getUserValue($userid, 'settings', 'email');
@@ -71,7 +71,7 @@ class OC_USER_SAML_Hooks {
 			OC_Util::setupFS($userid);
 			
 			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".
-				join($groups).":".$quota, OC_Log::INFO);
+				join($groups).":".$quota, OC_Log::WARN);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
 			OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".
@@ -84,7 +84,7 @@ class OC_USER_SAML_Hooks {
 			
 			self::user_redirect($userid);
 		}
-		
+	
 		if (!$samlBackend->auth->isAuthenticated()) {
 			return false;
 		}
@@ -279,13 +279,14 @@ class OC_USER_SAML_Hooks {
 		}
 		// Check if a custom displayname has been set before updating the displayname with information from SAML
 		// This is clumsy, but, for some reason, getDisplayName() doesn't work here. - CB
+		// Well, this sort of prevents changing your display name... - FO
 		if (!empty($attributes['display_name'])) {
-			$query = OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
+			/*$query = OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
 			$result = $query->execute(array($uid))->fetchAll();
-			$displayName = trim($result[0]['displayname'], ' ');
-			if (empty($displayName)) {
+			$displayName = trim($result[0]['displayname'], ' ');*/
+			//if (empty($displayName)) {
 				self::update_display_name($uid, $attributes['display_name']);
-			}
+			//}
 		}
 		if(!empty($attributes['freequota'])){
 			self::update_freequota($uid, $attributes['freequota']);
