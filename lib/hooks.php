@@ -26,7 +26,7 @@
 class OC_USER_SAML_Hooks {
 	
 	static private function getAtributeCode($friendlyName){
-		$sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
+		$sspPath = \OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
 		include $sspPath."/attributemap/name2oid.php";
 		if(array_key_exists($friendlyName, $attributemap)){
 			return $attributemap[$friendlyName];
@@ -50,13 +50,13 @@ class OC_USER_SAML_Hooks {
 	public static function post_login($parameters) {
 				
 		// Do nothing if we're sharding and not on the master
-		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
+		if(\OCP\App::isEnabled('files_sharding') && !\OCA\FilesSharding\Lib::isMaster()){
 			return true;
 		}
 		
 		$userid = $parameters['uid'];
-		$samlBackend = new OC_USER_SAML();
-		$ocUserDatabase = new OC_User_Database();
+		$samlBackend = new \OC_USER_SAML();
+		$ocUserDatabase = new \OC_User_Database();
 		// Redirect regardless of whether the user has authenticated with SAML or not.
 		// Since this is a post_login hook, he will have authenticated in some way and have a valid session.
 		if ($ocUserDatabase->userExists($userid)) {
@@ -67,15 +67,15 @@ class OC_USER_SAML_Hooks {
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
 			$freequota = \OC_Preferences::getValue($userid, 'files_accounting','freequota');
 			
-			OC_Util::teardownFS($userid);
-			OC_Util::setupFS($userid);
+			\OC_Util::teardownFS($userid);
+			\OC_Util::setupFS($userid);
 			
-			OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".
-				join($groups).":".$quota, OC_Log::WARN);
+			\OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".
+				join($groups).":".$quota, \OC_Log::WARN);
 			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
 			
-			OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".
-				$samlBackend->updateUserData, OC_Log::WARN);
+			\OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".
+				$samlBackend->updateUserData, \OC_Log::WARN);
 			
 			if($samlBackend->updateUserData){
 				$attrs = self::get_user_attributes($userid, $samlBackend);
@@ -97,14 +97,14 @@ class OC_USER_SAML_Hooks {
 			if (array_key_exists($usernameMapping, $attributes) && !empty($attributes[$usernameMapping][0])) {
 				$usernameFound = true;
 				$uid = $attributes[$usernameMapping][0];
-				OC_Log::write('saml', 'Authenticated user '.$uid,OC_Log::INFO);
+				\OC_Log::write('saml', 'Authenticated user '.$uid, \OC_Log::INFO);
 				break;
 			}
 			$attributeCode = self::getAtributeCode($usernameMapping);
 			if (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
 				$usernameFound = true;
 				$uid = $attributes[$attributeCode][0];
-				OC_Log::write('saml', 'Authenticated user '.$uid, OC_Log::INFO);
+				\OC_Log::write('saml', 'Authenticated user '.$uid, \OC_Log::INFO);
 				break;
 			}
 		}
@@ -125,12 +125,12 @@ class OC_USER_SAML_Hooks {
 			$userManager->delete($uid);
 			// Reject invalid user names
 			if (preg_match( '/[^a-zA-Z0-9 _\.@\-]/', $uid)) {
-				OC_Log::write('saml', 'Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ', OC_Log::DEBUG);
+				\OC_Log::write('saml', 'Invalid username "'.$uid.'", allowed chars "a-zA-Z0-9" and "_.@-" ', \OC_Log::DEBUG);
 				return false;
 			}
-			$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
+			$cookiedomain = \OCP\App::isEnabled('files_sharding')?\OCA\FilesSharding\Lib::getCookieDomain():null;
 			// Reject users we don't allow to autocreate an account
-			if(isset($uid) && trim($uid)!='' && !OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
+			if(isset($uid) && trim($uid)!='' && !\OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
 				$failCookieName = 'saml_auth_fail';
 				$userCookieName = 'saml_auth_fail_user';
 				$expire = 0;//time()+60*60*24*30;
@@ -140,9 +140,9 @@ class OC_USER_SAML_Hooks {
 				setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, false, false);
 				$spSource = 'default-sp';
 				$auth = new SimpleSAML_Auth_Simple($spSource);
-				OC_Log::write('saml', 'Rejected user '.$uid, OC_Log::ERROR);
-				if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
-					//$auth->logout(!OCA\FilesSharding\Lib::getMasterURL());
+				\OC_Log::write('saml', 'Rejected user '.$uid, \OC_Log::ERROR);
+				if(\OCP\App::isEnabled('files_sharding') && !\OCA\FilesSharding\Lib::isMaster()){
+					//$auth->logout(!\OCA\FilesSharding\Lib::getMasterURL());
 				}
 				else{
 					//$auth->logout();
@@ -150,31 +150,31 @@ class OC_USER_SAML_Hooks {
 				return false;
 			}
 			// Create new user
-			$random_password = OC_Util::generateRandomBytes(20);
-			OC_Log::write('saml', 'Creating new user: '.$uid, OC_Log::WARN);
-			OC_User::createUser($uid, $random_password);
-			if(OC_User::userExists($uid)){
+			$random_password = \OC_Util::generateRandomBytes(20);
+			\OC_Log::write('saml', 'Creating new user: '.$uid, \OC_Log::WARN);
+			\OC_User::createUser($uid, $random_password);
+			if(\OC_User::userExists($uid)){
 				$userDir = '/'.$uid.'/files';
 				\OC\Files\Filesystem::init($uid, $userDir);
 				if($samlBackend->updateUserData){
 					self::update_user_data($uid, $samlBackend, $attrs, true);
-					if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
+					if(\OCP\App::isEnabled('files_sharding') && \OCA\FilesSharding\Lib::isMaster()){
 						// This returns the master
-						//$site = OCA\FilesSharding\Lib::dbGetSite(null);
+						//$site = \OCA\FilesSharding\Lib::dbGetSite(null);
 						$site = self::choose_site_for_user($attributes);
-						$server_id = OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $attrs['email'], $site,
-								OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY, null);
-						OC_Log::write('saml', 'Setting server for new user: '.$server_id, OC_Log::WARN);
-						OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id,
-						OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY,
-						OCA\FilesSharding\Lib::$USER_ACCESS_ALL);
+						$server_id = \OCA\FilesSharding\Lib::dbChooseServerForUser($uid, $attrs['email'], $site,
+								\OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY, null);
+						\OC_Log::write('saml', 'Setting server for new user: '.$server_id, \OC_Log::WARN);
+						\OCA\FilesSharding\Lib::dbSetServerForUser($uid, $server_id,
+						\OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_PRIMARY,
+						\OCA\FilesSharding\Lib::$USER_ACCESS_ALL);
 					}
 				}
 				self::setAttributes($uid, $attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota'], $attrs['freequota']);
 			}
 		}
 		else{
-			OC_Log::write('saml', 'Updating user '.$uid.":".$samlBackend->updateUserData, OC_Log::INFO);
+			\OC_Log::write('saml', 'Updating user '.$uid.":".$samlBackend->updateUserData, \OC_Log::INFO);
 			if($samlBackend->updateUserData){
 				self::update_user_data($uid, $samlBackend, $attrs, false);
 			}
@@ -185,7 +185,7 @@ class OC_USER_SAML_Hooks {
 	
 	private static function get_user_attributes($uid, $samlBackend) {
 		$attributes = $samlBackend->auth->getAttributes();
-		OC_Log::write('saml', 'SAML attributes: '.serialize($attributes), OC_Log::WARN);
+		\OC_Log::write('saml', 'SAML attributes: '.serialize($attributes), \OC_Log::WARN);
 		$result = array();
 	
 		$result['email'] = '';
@@ -229,12 +229,12 @@ class OC_USER_SAML_Hooks {
 		if (empty($result['groups']) && strpos($uid, '@')>0) {
 			$atIndex = strpos($uid, '@');
 			$domain = substr($uid, $atIndex+1);
-			OCP\Util::writeLog('saml','Using UID domain as group "'.$domain.'" for the user: '.$uid, OCP\Util::DEBUG);
+			\OCP\Util::writeLog('saml','Using UID domain as group "'.$domain.'" for the user: '.$uid, \OCP\Util::DEBUG);
 			$result['groups'] = array($domain);
 		}
 		if (empty($result['groups']) && !empty($samlBackend->defaultGroup)) {
 			$result['groups'] = array($samlBackend->defaultGroup);
-			OCP\Util::writeLog('saml','Using default group "'.$samlBackend->defaultGroup.'" for the user: '.$uid, OCP\Util::DEBUG);
+			\OCP\Util::writeLog('saml','Using default group "'.$samlBackend->defaultGroup.'" for the user: '.$uid, \OCP\Util::DEBUG);
 		}
 		$result['protected_groups'] = $samlBackend->protectedGroups;
 	
@@ -251,26 +251,26 @@ class OC_USER_SAML_Hooks {
 					break;
 				}
 			}
-			OCP\Util::writeLog('saml','SAML quota: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
+			\OCP\Util::writeLog('saml','SAML quota: "'.$result['quota'].'" for user: '.$uid, \OCP\Util::WARN);
 		}
 		if (empty($result['quota']) && !empty($samlBackend->defaultQuota)) {
 			$result['quota'] = $samlBackend->defaultQuota;
-			OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, OCP\Util::WARN);
+			\OCP\Util::writeLog('saml','Using default quota ('.$result['quota'].') for user: '.$uid, \OCP\Util::WARN);
 		}
 
 		$result['freequota'] = '';
 		if (!empty($samlBackend->defaultFreeQuota)) {
 		  $result['freequota'] = $samlBackend->defaultFreeQuota;
-		  OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, OCP\Util::WARN);
+		  \OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, \OCP\Util::WARN);
 		}
 
 		return $result;	
 	}
 	
 	private static function update_user_data($uid, $samlBackend, $attributes=array(), $just_created=false){
-		//OC_Util::setupFS($uid);
-		OC_Log::write('saml', 'Updating data of the user: '.$uid." : ".OC_User::userExists($uid)." :: ".
-			implode("::", $samlBackend->protectedGroups), OC_Log::INFO);
+		//\OC_Util::setupFS($uid);
+		\OC_Log::write('saml', 'Updating data of the user: '.$uid." : ".\OC_User::userExists($uid)." :: ".
+			implode("::", $samlBackend->protectedGroups), \OC_Log::INFO);
 		if(!empty($attributes['email'])) {
 			self::update_mail($uid, $attributes['email']);
 		}
@@ -281,7 +281,7 @@ class OC_USER_SAML_Hooks {
 		// This is clumsy, but, for some reason, getDisplayName() doesn't work here. - CB
 		// Well, this sort of prevents changing your display name... - FO
 		if (!empty($attributes['display_name'])) {
-			/*$query = OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
+			/*$query = \OC_DB::prepare('SELECT `displayname` FROM `*PREFIX*users` WHERE `uid` = ?');
 			$result = $query->execute(array($uid))->fetchAll();
 			$displayName = trim($result[0]['displayname'], ' ');*/
 			//if (empty($displayName)) {
@@ -297,7 +297,7 @@ class OC_USER_SAML_Hooks {
 			$attributes['quota'] = $attributes['freequota'];
 		}
 		if(!empty($attributes['quota']) || $attributes['quota']==='0'){
-			OCP\Util::writeLog('saml','Updating quota to: "'.$result['quota'].'" for user: '.$uid, OCP\Util::WARN);
+			\OCP\Util::writeLog('saml','Updating quota to: "'.$result['quota'].'" for user: '.$uid, \OCP\Util::WARN);
 			self::update_quota($uid, $attributes['quota']);
 		}
 	}
@@ -307,14 +307,14 @@ class OC_USER_SAML_Hooks {
 		if(empty($ret)){
 			$attributeCode = self::getAtributeCode($attribute);
 			$ret = array_key_exists($attributeCode, $attributes)?$attributes[$attributeCode][0]:'';
-			OC_Log::write('saml', 'Code: '.$attribute.'-->'.$attributeCode.'-->'.$ret, OC_Log::WARN);
+			\OC_Log::write('saml', 'Code: '.$attribute.'-->'.$attributeCode.'-->'.$ret, \OC_Log::WARN);
 		}
 		return $ret;
 	}
 
   // TODO: generalize this
 	private static function check_user_attributes($attributes){
-		OC_Log::write('saml', 'Checking attributes: '.serialize($attributes), OC_Log::WARN);
+		\OC_Log::write('saml', 'Checking attributes: '.serialize($attributes), \OC_Log::WARN);
 		$entitlement = self::get_attribute('eduPersonEntitlement', $attributes);
 		$schacHomeOrganization = self::get_attribute('schacHomeOrganization', $attributes);
 		$mail = self::get_attribute('mail', $attributes);
@@ -323,7 +323,7 @@ class OC_USER_SAML_Hooks {
 
   // TODO: generalize this
 	private static function check_user($entitlement, $schacHomeOrganization, $mail){
-		OC_Log::write('saml', 'Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement, OC_Log::WARN);
+		\OC_Log::write('saml', 'Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement, \OC_Log::WARN);
 		return substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or
 		substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or substr($mail, -8)==="@cern.ch" or
 		$mail == "fror@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or
@@ -337,18 +337,18 @@ class OC_USER_SAML_Hooks {
 		$schacHomeOrganization = array_key_exists('schacHomeOrganization' , $attributes) ? $attributes['schacHomeOrganization'][0]: '';
 		$organizationName = array_key_exists('organizationName' , $attributes) ? $attributes['organizationName'][0]: '';
 		$mail = array_key_exists('mail' , $attributes) ? $attributes['mail'][0]: '';
-		return 	OCA\FilesSharding\Lib::dbChooseSiteForUser($mail, $schacHomeOrganization, $organizationName, $entitlement);
+		return 	\OCA\FilesSharding\Lib::dbChooseSiteForUser($mail, $schacHomeOrganization, $organizationName, $entitlement);
 	}
 
 	private static function user_redirect($userid){
 
-		if(!OCP\App::isEnabled('files_sharding')){
+		if(!\OCP\App::isEnabled('files_sharding')){
 			return;
 		}
 
-		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
+		$redirect = \OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(self::check_user("", "", $userid) && !empty($redirect)){
-			$uri = preg_replace('|^'.OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
+			$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 			// The question mark is needed to not end up on slave login page
 			if($uri=='/'){
 				$uri = '/?';
@@ -358,7 +358,7 @@ class OC_USER_SAML_Hooks {
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
-				OC_Log::write('saml', 'Redirecting to: '.$redirect_full, OC_Log::WARN);
+				\OC_Log::write('saml', 'Redirecting to: '.$redirect_full, \OC_Log::WARN);
 				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
@@ -368,14 +368,15 @@ class OC_USER_SAML_Hooks {
 
 	public static function logout($parameters) {
 		
-		if(OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster()){
+		if(\OCP\App::isEnabled('files_sharding') && !\OCA\FilesSharding\Lib::isMaster()){
 			//return;
 		}
+		$cookiedomain = \OCP\App::isEnabled('files_sharding')?\OCA\FilesSharding\Lib::getCookieDomain():null;
 		
 		self::unsetAttributes();
-		$samlBackend = new OC_USER_SAML();
+		$samlBackend = new \OC_USER_SAML();
 		if ($samlBackend->auth->isAuthenticated()) {
-			OC_Log::write('saml', 'Executing SAML logout', OC_Log::WARN);
+			\OC_Log::write('saml', 'Executing SAML logout', \OC_Log::WARN);
 			//unset($_COOKIE['SimpleSAMLAuthToken']);
 			//setcookie('SimpleSAMLAuthToken', '', time()-3600, \OC::$WEBROOT);
 			$session = \OC::$server->getUserSession();
@@ -387,17 +388,17 @@ class OC_USER_SAML_Hooks {
 		else{
 			session_destroy();
 			$session_id = session_id();
-			OC_Log::write('saml', 'Clearing session cookie '.$session_id, OC_Log::WARN);
+			\OC_Log::write('saml', 'Clearing session cookie '.$session_id, \OC_Log::WARN);
 			unset($_COOKIE[$session_id]);
-			setcookie($session_id, '', time()-3600, \OC::$WEBROOT);
-			setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/');
+			setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
+			setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
 		}
 		return true;
 	}
 	
 	public static function setRedirectCookie(){
 		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
-		$cookiedomain = OCP\App::isEnabled('files_sharding')?OCA\FilesSharding\Lib::getCookieDomain():null;
+		$cookiedomain = \OCP\App::isEnabled('files_sharding')?\OCA\FilesSharding\Lib::getCookieDomain():null;
 		setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires,
 			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT,
 			$cookiedomain, true);
@@ -412,7 +413,7 @@ class OC_USER_SAML_Hooks {
 		setcookie("oc_quota", $saml_quota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_freequota", $saml_freequota, $expires, \OC::$WEBROOT, '', $secure_cookie);
 		setcookie("oc_groups", json_encode($saml_groups), $expires, \OC::$WEBROOT, '', $secure_cookie);*/
-		if(OCP\App::isEnabled('files_sharding')){
+		if(\OCP\App::isEnabled('files_sharding')){
 			self::setRedirectCookie();
 		}
 
@@ -421,16 +422,16 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_groups"] = $saml_groups;
 		$_SESSION["oc_quota"] = $saml_quota;
 		$_SESSION["oc_freequota"] = $saml_freequota;
-		if(OCP\App::isEnabled('files_sharding') && OCA\FilesSharding\Lib::isMaster()){
+		if(\OCP\App::isEnabled('files_sharding') && \OCA\FilesSharding\Lib::isMaster()){
 			//\OC_Util::setupFS();
 			// Let slaves know which folders are data folders
-			$dataFolders = OCA\FilesSharding\Lib::dbGetDataFoldersList($user_id);
+			$dataFolders = \OCA\FilesSharding\Lib::dbGetDataFoldersList($user_id);
 			$_SESSION["oc_data_folders"] = $dataFolders;
 			// Have slaves use the same numeric ID for "storages".
 			$view = \OC\Files\Filesystem::getView();
 			$rootInfo = $view->getFileInfo('');
 			$storageId = $rootInfo->getStorage()->getId();
-			$numericStorageId = OC\Files\Cache\Storage::getNumericStorageId($storageId);
+			$numericStorageId = \OC\Files\Cache\Storage::getNumericStorageId($storageId);
 			$_SESSION["oc_storage_id"] = $storageId;
 			$_SESSION["oc_numeric_storage_id"] = $numericStorageId;
 		}
@@ -439,22 +440,20 @@ class OC_USER_SAML_Hooks {
 	
 	private static function unsetAttributes() {
 		$expires = time()-3600;
+		$cookiedomain = \OCP\App::isEnabled('files_sharding')?\OCA\FilesSharding\Lib::getCookieDomain():null;
 		
 		/*setcookie("oc_display_name", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_mail", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_quota", '', $expires, \OC::$WEBROOT);
 		setcookie("oc_groups", '', $expires, \OC::$WEBROOT);*/
-		setcookie("oc_freequota", '', $expires, \OC::$WEBROOT);	
-		$cookiedomain = null;
-		if(OCP\App::isEnabled('files_sharding')){
+		setcookie("oc_freequota", '', $expires, \OC::$WEBROOT, $cookiedomain);	
+		if(\OCP\App::isEnabled('files_sharding')){
 			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "", $expires,
 				empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
-			$cookiedomain = \OCA\FilesSharding\Lib::getCookieDomain();
 		}
-		if(OCP\App::isEnabled('files_sharding')){
+		if(\OCP\App::isEnabled('files_sharding')){
 			setcookie(\OCA\FilesSharding\Lib::$ACCESS_OK_COOKIE, "", $expires,
 			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
-			$cookiedomain = \OCA\FilesSharding\Lib::getCookieDomain();
 		}
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
@@ -467,47 +466,47 @@ class OC_USER_SAML_Hooks {
 	}
 
 	private static function update_mail($uid, $email) {
-		if ($email != OC_Preferences::getValue($uid, 'settings', 'email', '')) {
-			OC_Preferences::setValue($uid, 'settings', 'email', $email);
-			OC_Log::write('saml','Set email "'.$email.'" for the user: '.$uid, OC_Log::DEBUG);
+		if ($email != \OC_Preferences::getValue($uid, 'settings', 'email', '')) {
+			\OC_Preferences::setValue($uid, 'settings', 'email', $email);
+			\OC_Log::write('saml','Set email "'.$email.'" for the user: '.$uid, \OC_Log::DEBUG);
 		}
 	}
 
 
 	private static function update_groups($uid, $groups, $protectedGroups=array(), $just_created=false) {
 		if(!$just_created && !empty($groups) && !\OCP\App::isEnabled('user_group_admin')) {
-			OC_Log::write('saml','Restricting group membership of '.$uid.' to the groups '.serialize($groups), OC_Log::WARN);
-			$old_groups = OC_Group::getUserGroups($uid);
+			\OC_Log::write('saml','Restricting group membership of '.$uid.' to the groups '.serialize($groups), \OC_Log::WARN);
+			$old_groups = \OC_Group::getUserGroups($uid);
 			foreach($old_groups as $group) {
 				if(!in_array($group, $protectedGroups) && !in_array($group, $groups)) {
 				// This does not affect groups from user_group_admin
-					OC_Group::removeFromGroup($uid,$group);
-					OC_Log::write('saml','Removed "'.$uid.'" from the group "'.$group.'"', OC_Log::WARN);
+					\OC_Group::removeFromGroup($uid,$group);
+					\OC_Log::write('saml','Removed "'.$uid.'" from the group "'.$group.'"', \OC_Log::WARN);
 				}
 			}
 		}
 		foreach($groups as $group) {
 			if (preg_match( '/[^a-zA-Z0-9 _\.@\-\/]/', $group)) {
-				OC_Log::write('saml','Invalid group "'.$group.'", allowed chars "a-zA-Z0-9" and "_.@-/" ',OC_Log::DEBUG);
+				\OC_Log::write('saml','Invalid group "'.$group.'", allowed chars "a-zA-Z0-9" and "_.@-/" ', \OC_Log::DEBUG);
 			}
 			else {
-				if(!OC_Group::inGroup($uid, $group)) {
-					if(!OC_Group::groupExists($group)) {
-						if(OCP\App::isEnabled('user_group_admin')){
-							OC_User_Group_Admin_Util::createHiddenGroup($group);
+				if(!\OC_Group::inGroup($uid, $group)) {
+					if(!\OC_Group::groupExists($group)) {
+						if(\OCP\App::isEnabled('user_group_admin')){
+							\OC_User_Group_Admin_Util::createHiddenGroup($group);
 						}
 						else{
-							OC_Group::createGroup($group);
+							\OC_Group::createGroup($group);
 						}
-						OC_Log::write('saml','New group created: '.$group, OC_Log::WARN);
+						\OC_Log::write('saml','New group created: '.$group, \OC_Log::WARN);
 					}
-					if(OCP\App::isEnabled('user_group_admin')){
-						OC_User_Group_Admin_Util::addToGroup($uid, $group, '', '');
+					if(\OCP\App::isEnabled('user_group_admin')){
+						\OC_User_Group_Admin_Util::addToGroup($uid, $group, '', '');
 					}
 					else{
-						OC_Group::addToGroup($uid, $group);
+						\OC_Group::addToGroup($uid, $group);
 					}
-					OC_Log::write('saml','Added "'.$uid.'" to the group "'.$group.'"', OC_Log::WARN);
+					\OC_Log::write('saml','Added "'.$uid.'" to the group "'.$group.'"', \OC_Log::WARN);
 				}
 			}
 		}
@@ -517,9 +516,9 @@ class OC_USER_SAML_Hooks {
 		// I inject directly into the database here rather than using the method setDisplayName(), 
 		// which doesn't work. -CB 
 		// because we're using the user_saml backend, and not the default one - see app.php. - FO
-		//$query = OC_DB::prepare('UPDATE `*PREFIX*users` SET `displayname` = ? WHERE LOWER(`uid`) = ?');
+		//$query = \OC_DB::prepare('UPDATE `*PREFIX*users` SET `displayname` = ? WHERE LOWER(`uid`) = ?');
 		//$query->execute(array($displayName, $uid));
-		OC_User::setDisplayName($uid, $displayName);
+		\OC_User::setDisplayName($uid, $displayName);
 	}
 	
 	private static function update_quota($uid, $quota) {

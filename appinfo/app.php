@@ -105,18 +105,26 @@ if (OCP\App::isEnabled('user_saml')) {
 		$userid = \OCP\User::getUser();
 		$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(!empty($redirect)){
+			$backup1 = OCA\FilesSharding\Lib::getServerForUser($userid, false,
+					OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_BACKUP_1);
+			$backup2 = OCA\FilesSharding\Lib::getServerForUser($userid, false,
+					OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_BACKUP_2);
 			$uri = preg_replace('|^'.OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 			// The question mark is needed to not end up on slave login page
 			if($uri=='/'){
 				$uri = '/?';
 			}
 			$parsedRedirect = parse_url($redirect);
-			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
+			$parsedBackup1 = empty($backup1)?'':parse_url($backup1);
+			$parsedBackup2 = empty($backup2)?'':parse_url($backup2);
+			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
+					(empty($parsedBackup1)||$_SERVER['HTTP_HOST']!==$parsedBackup1['host']) &&
+					(empty($parsedBackup2)||$_SERVER['HTTP_HOST']!==$parsedBackup2['host'])){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				OC_USER_SAML_Hooks::setRedirectCookie();
-				OC_Log::write('user_saml', 'Redirecting to URL '.$redirect_full, OC_Log::WARN);
+				OC_Log::write('user_saml', 'Redirecting to URL '.$redirect_full.'-->'.serialize($backup1), OC_Log::WARN);
 				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
