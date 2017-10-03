@@ -375,7 +375,7 @@ class OC_USER_SAML_Hooks {
 		
 		self::unsetAttributes();
 		$samlBackend = new \OC_USER_SAML();
-		if ($samlBackend->auth->isAuthenticated()) {
+		if($samlBackend->auth->isAuthenticated()){
 			\OC_Log::write('saml', 'Executing SAML logout', \OC_Log::WARN);
 			//unset($_COOKIE['SimpleSAMLAuthToken']);
 			//setcookie('SimpleSAMLAuthToken', '', time()-3600, \OC::$WEBROOT);
@@ -383,15 +383,15 @@ class OC_USER_SAML_Hooks {
 			$session->unsetMagicInCookie();
 			$session->setUser(null);
 			$session->setLoginName(null);
-			$samlBackend->auth->logout();
 		}
-		else{
-			session_destroy();
-			$session_id = session_id();
-			\OC_Log::write('saml', 'Clearing session cookie '.$session_id, \OC_Log::WARN);
-			unset($_COOKIE[$session_id]);
-			setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
-			setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
+		session_destroy();
+		$session_id = session_id();
+		\OC_Log::write('saml', 'Clearing session cookie '.$session_id, \OC_Log::WARN);
+		unset($_COOKIE[$session_id]);
+		setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
+		setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
+		if($samlBackend->auth->isAuthenticated()){
+			$samlBackend->auth->logout();
 		}
 		return true;
 	}
