@@ -48,10 +48,12 @@ if (OCP\App::isEnabled('user_saml')) {
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0){
 		OC_User::useBackend( 'SAML' );
 	}
+	// for webdav access we don't need saml
 	else{
 		//OC_User::clearBackends();
 		//OC_User::useBackend();
-		OC_User::useBackend( 'SAML' );
+		//OC_User::useBackend( 'SAML' );
+		return;
 	}
 
 	OC::$CLASSPATH['OC_USER_SAML_Hooks'] = 'user_saml/lib/hooks.php';
