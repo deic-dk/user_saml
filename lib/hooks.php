@@ -345,10 +345,22 @@ class OC_USER_SAML_Hooks {
 		if(!\OCP\App::isEnabled('files_sharding')){
 			return;
 		}
-
+		
+		$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
+		
+		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0 &&
+				!\OCA\FilesSharding\Lib::isMaster()){
+			$masterUrl = OCA\FilesSharding\Lib::getMasterURL();
+			$redirect_full = rtrim($masterUrl, '/').'/'.ltrim($uri, '/');
+			$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
+			\OC_Log::write('saml', 'Redirecting sharing queries back to master', \OC_Log::WARN);
+			header("HTTP/1.1 307 Temporary Redirect");
+			header('Location: ' . $redirect_full);
+			exit();
+		}
+		
 		$redirect = \OCA\FilesSharding\Lib::getServerForUser($userid);
 		if(self::check_user("", "", $userid) && !empty($redirect)){
-			$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 			// The question mark is needed to not end up on slave login page
 			if($uri=='/'){
 				$uri = '/?';
