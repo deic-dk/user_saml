@@ -349,18 +349,27 @@ class OC_USER_SAML_Hooks {
 		$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 		
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
-				if(\OCA\FilesSharding\Lib::isMaster()){
-					return;
+			// Don't redirect js/ajax calls. That will produce an OPTIONS request to master...
+			if(isset($_SERVER['HTTP_REQUESTTOKEN']) || isset($_SERVER['REDIRECT_HTTP_REQUESTTOKEN']) ||
+					\OCA\FilesSharding\Lib::isMaster()){
+				return;
+			}
+			else{
+				$masterUrl = OCA\FilesSharding\Lib::getMasterURL();
+				$redirect_full = rtrim($masterUrl, '/').'/'.ltrim($uri, '/');
+				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
+				// Pass on the file ID as item_source
+				if(!empty($_POST) && !empty($_POST['path'])){
+					$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
+					if(!empty($fileID)){
+						$redirect_full = $redirect_full.'?item_source='.$fileID;
+					}
 				}
-				else{
-					$masterUrl = OCA\FilesSharding\Lib::getMasterURL();
-					$redirect_full = rtrim($masterUrl, '/').'/'.ltrim($uri, '/');
-					$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
-					\OC_Log::write('saml', 'Redirecting sharing queries back to master', \OC_Log::WARN);
-					header("HTTP/1.1 307 Temporary Redirect");
-					header('Location: ' . $redirect_full);
-					exit();
-				}
+				\OC_Log::write('saml', 'Redirecting sharing queries back to master. '.serialize($_SERVER), \OC_Log::WARN);
+				header("HTTP/1.1 307 Temporary Redirect");
+				header('Location: ' . $redirect_full);
+				exit();
+			}
 		}
 		
 		$redirect = \OCA\FilesSharding\Lib::getServerForUser($userid);

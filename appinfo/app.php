@@ -108,11 +108,18 @@ if (OCP\App::isEnabled('user_saml')) {
 		$userid = \OCP\User::getUser();
 		$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
-				if(\OCA\FilesSharding\Lib::isMaster()){
+			// Don't redirect js/ajax calls - not allowed by security. (Proxying done instead).
+			if(isset($_SERVER['HTTP_REQUESTTOKEN']) || isset($_SERVER['REDIRECT_HTTP_REQUESTTOKEN']) ||
+					\OCA\FilesSharding\Lib::isMaster()){
 					return;
 				}
+				// Redirect iOS et al. That works...
 				else{
 					$redirect = OCA\FilesSharding\Lib::getMasterURL();
+					// Pass on the file ID as item_source
+					if(!empty($_POST) && !empty($_POST['path'])){
+						$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
+					}
 				}
 		}
 		else{
@@ -136,6 +143,9 @@ if (OCP\App::isEnabled('user_saml')) {
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
+				if(!empty($fileID)){
+					$redirect_full = $redirect_full.'?item_source='.$fileID;
+				}
 				OC_USER_SAML_Hooks::setRedirectCookie();
 				OC_Log::write('user_saml', 'Redirecting to URL '.$uri.'-->'.$redirect_full.'-->'.serialize($backup1), OC_Log::WARN);
 				header("HTTP/1.1 307 Temporary Redirect");
