@@ -155,6 +155,10 @@ class OC_USER_SAML_Hooks {
 			\OC_User::createUser($uid, $random_password);
 			if(\OC_User::userExists($uid)){
 				$userDir = '/'.$uid.'/files';
+				// Check if a user with the email address as uid has been migrated from old service
+				if(!empty($attrs['email']) && $uid!=$attrs['email'] && \OC_User::userExists($attrs['email'])){
+					\OCA\FilesSharding\Lib::migrateUser($attrs['email'], $uid);
+				}
 				\OC\Files\Filesystem::init($uid, $userDir);
 				if($samlBackend->updateUserData){
 					self::update_user_data($uid, $samlBackend, $attrs, true);
