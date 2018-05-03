@@ -23,7 +23,10 @@
 
 OC_Util::checkAdminUser();
 
-$params = array('saml_ssp_path', 'saml_sp_source', 'saml_force_saml_login', 'saml_autocreate', 'saml_update_user_data', 'saml_protected_groups', 'saml_default_group', 'saml_username_mapping', 'saml_email_mapping', 'saml_quota_mapping', 'saml_default_quota', 'saml_displayname_mapping', 'saml_group_mapping', 'saml_group_admin');
+$params = array('saml_ssp_path', 'saml_sp_source', 'saml_force_saml_login', 'saml_autocreate',
+		'saml_update_user_data', 'saml_protected_groups', 'saml_default_group', 'saml_username_mapping',
+		'saml_email_mapping', 'saml_quota_mapping', 'saml_default_quota', 'saml_displayname_mapping',
+		'saml_group_mapping', 'saml_affiliation_mapping', 'saml_group_admin');
 
 OCP\Util::addscript('user_saml', 'settings');
 
@@ -69,5 +72,6 @@ $tmpl->assign( 'saml_displayname_mapping', OCP\Config::getAppValue('user_saml', 
 $tmpl->assign( 'saml_quota_mapping', OCP\Config::getAppValue('user_saml', 'saml_quota_mapping', ''));
 $tmpl->assign( 'saml_default_quota', OCP\Config::getAppValue('user_saml', 'saml_default_quota', ''));
 $tmpl->assign( 'saml_group_mapping', OCP\Config::getAppValue('user_saml', 'saml_group_mapping', ''));
+$tmpl->assign( 'saml_affiliation_mapping', OCP\Config::getAppValue('user_saml', 'saml_affiliation_mapping', ''));
 
 return $tmpl->fetchPage();

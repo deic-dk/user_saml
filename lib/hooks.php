@@ -66,13 +66,14 @@ class OC_USER_SAML_Hooks {
 			$groups = \OC_Group::getUserGroups($userid);
 			$quota = \OC_Preferences::getValue($userid,'files','quota');
 			$freequota = \OC_Preferences::getValue($userid, 'files_accounting','freequota');
+			$affiliation = \OCP\Config::getUserValue($userid, 'user_group_admin', 'affiliation');
 			
 			\OC_Util::teardownFS($userid);
 			\OC_Util::setupFS($userid);
 			
 			\OC_Log::write('saml','Setting user attributes: '.$userid.":".$display_name.":".$email.":".
 				join($groups).":".$quota, \OC_Log::WARN);
-			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota);
+			self::setAttributes($userid, $display_name, $email, $groups, $quota, $freequota, $affiliation);
 			
 			\OC_Log::write('saml','Updating user '.$userid.":".\OCP\USER::getUser().": ".
 				$samlBackend->updateUserData, \OC_Log::WARN);
@@ -174,7 +175,8 @@ class OC_USER_SAML_Hooks {
 						\OCA\FilesSharding\Lib::$USER_ACCESS_ALL);
 					}
 				}
-				self::setAttributes($uid, $attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota'], $attrs['freequota']);
+				self::setAttributes($uid, $attrs['display_name'], $attrs['email'], $attrs['groups'], $attrs['quota'],
+						$attrs['freequota'], $attrs['affiliation']);
 			}
 		}
 		else{
@@ -267,6 +269,22 @@ class OC_USER_SAML_Hooks {
 		  $result['freequota'] = $samlBackend->defaultFreeQuota;
 		  \OCP\Util::writeLog('saml','Using default free quota ('.$result['freequota'].') for user: '.$uid, \OCP\Util::WARN);
 		}
+		
+		$result['affiliation'] = '';
+		if (!empty($samlBackend->affiliationMapping)) {
+			foreach ($samlBackend->affiliationMapping as $affiliationMapping) {
+				if (array_key_exists($affiliationMapping, $attributes) && !empty($attributes[$affiliationMapping][0])) {
+					$result['affiliation'] = $attributes[$affiliationMapping][0];
+					break;
+				}
+				$attributeCode = self::getAtributeCode($affiliationMapping);
+				if (!empty($attributeCode) && array_key_exists($attributeCode, $attributes) && !empty($attributes[$attributeCode][0])) {
+					$result['affiliation'] = $attributes[$attributeCode][0];
+					break;
+				}
+			}
+			\OCP\Util::writeLog('saml','SAML affiliation: "'.$result['affiliation'].'" for user: '.$uid, \OCP\Util::WARN);
+		}
 
 		return $result;	
 	}
@@ -280,6 +298,9 @@ class OC_USER_SAML_Hooks {
 		}
 		if(!empty($attributes['groups'])) {
 			self::update_groups($uid, $attributes['groups'], $samlBackend->protectedGroups, false);
+		}
+		if($just_created && !empty($attributes['affiliation'])) {
+			self::update_affiliation($uid, $attributes['affiliation']);
 		}
 		// Check if a custom displayname has been set before updating the displayname with information from SAML
 		// This is clumsy, but, for some reason, getDisplayName() doesn't work here. - CB
@@ -328,7 +349,8 @@ class OC_USER_SAML_Hooks {
   // TODO: generalize this
 	private static function check_user($entitlement, $schacHomeOrganization, $mail){
 		\OC_Log::write('saml', 'Checking user: '.$mail.':'.$schacHomeOrganization.':'.$entitlement, \OC_Log::WARN);
-		return substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or
+		return true or substr($mail, -7)==="@sdu.dk" or substr($mail, -7)===".sdu.dk" or
+		substr($mail, -7)==="@cbs.dk" or substr($mail, -7)===".cbs.dk" or
 		substr($mail, -7)==="@dtu.dk" or substr($mail, -7)===".dtu.dk" or substr($mail, -8)==="@cern.ch" or
 		$mail == "fror@dtu.dk" or $mail == "marbec@dtu.dk" or $mail == "tacou@dtu.dk" or
 		$mail == "dtma@dtu.dk" or
@@ -434,7 +456,8 @@ class OC_USER_SAML_Hooks {
 	}
 
 	// For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
-	private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups, $saml_quota, $saml_freequota) {
+	private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups,
+			$saml_quota, $saml_freequota, $saml_affiliation) {
 		/*$secure_cookie = \OC_Config::getValue("forcessl", false);
 		$expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 60 * 60 * 24 * 15);
 		setcookie("oc_display_name", $saml_display_name, $expires, \OC::$WEBROOT, '', $secure_cookie);
@@ -451,6 +474,7 @@ class OC_USER_SAML_Hooks {
 		$_SESSION["oc_groups"] = $saml_groups;
 		$_SESSION["oc_quota"] = $saml_quota;
 		$_SESSION["oc_freequota"] = $saml_freequota;
+		$_SESSION["oc_affiliation"] = $saml_affiliation;
 		if(\OCP\App::isEnabled('files_sharding') && \OCA\FilesSharding\Lib::isMaster()){
 			//\OC_Util::setupFS();
 			// Let slaves know which folders are data folders
@@ -492,6 +516,7 @@ class OC_USER_SAML_Hooks {
 		unset($_SESSION["oc_data_folders"]);
 		unset($_SESSION["oc_storage_id"]);
 		unset($_SESSION["oc_numeric_storage_id"]);
+		unset($_SESSION["oc_affiliation"]);
 	}
 
 	private static function update_mail($uid, $email) {
@@ -501,7 +526,13 @@ class OC_USER_SAML_Hooks {
 		}
 	}
 
-
+	private static function update_affiliation($uid, $affiliation) {
+		if ($affiliation != \OCP\Config::getUserValue($uid, 'user_group_admin', 'affiliation', '')) {
+			\OCP\Config::setUserValue($uid, 'user_group_admin', 'affiliation', $affiliation);
+			\OC_Log::write('saml','Set affiliation "'.$affiliation.'" for the user: '.$uid, \OC_Log::WARN);
+		}
+	}
+	
 	private static function update_groups($uid, $groups, $protectedGroups=array(), $just_created=false) {
 		if(!$just_created && !empty($groups) && !\OCP\App::isEnabled('user_group_admin')) {
 			\OC_Log::write('saml','Restricting group membership of '.$uid.' to the groups '.serialize($groups), \OC_Log::WARN);

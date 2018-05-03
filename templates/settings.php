@@ -25,6 +25,7 @@
 		<p><label for="saml_quota_mapping"><?php p($l->t('Quota'));?></label><input type="text" id="saml_quota_mapping" name="saml_quota_mapping" value="<?php p($_['saml_quota_mapping']); ?>" /></p>
 		<p><label for="saml_default_quota"><?php p($l->t('Quota Default'));?></label><input type="text" id="saml_default_quota" name="saml_default_quota" value="<?php p($_['saml_default_quota']); ?>" title="<?php echo $l->t('in bytes');?>" /></p>
 		<p><label for="saml_group_mapping"><?php p($l->t('Group'));?></label><input type="text" id="saml_group_mapping" name="saml_group_mapping" value="<?php p($_['saml_group_mapping']); ?>" /></p>
+		<p><label for="saml_affiliation_mapping"><?php p($l->t('Affiliation'));?></label><input type="text" id="saml_affiliation_mapping" name="saml_affiliation_mapping" value="<?php p($_['saml_affiliation_mapping']); ?>" /></p>
 	</fieldset>
 	<input type="hidden" name="requesttoken" value="<?php echo $_['requesttoken'] ?>" id="requesttoken">
 	<input type="submit" value="Save" />
