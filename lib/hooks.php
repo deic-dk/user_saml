@@ -178,6 +178,7 @@ class OC_USER_SAML_Hooks {
 		else{
 			\OC_Log::write('saml', 'Updating user '.$uid.":".$samlBackend->updateUserData, \OC_Log::INFO);
 			// Check if a user with the email address as uid has been migrated from old service
+			require_once __DIR__ . '/../../firstrunwizard/lib/firstrunwizard.php';
 			if(\OCP\App::isEnabled('firstrunwizard') && \OCA_FirstRunWizard\Config::isenabled() &&
 					!empty($attrs['email']) && $uid!=$attrs['email'] && \OC_User::userExists($attrs['email'])){
 						\OCA\FilesSharding\Lib::migrateUser($attrs['email'], $uid);
