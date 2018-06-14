@@ -92,21 +92,28 @@ if (OCP\App::isEnabled('user_saml')) {
 		OCP\Util::addScript('user_saml', 'utils');
 	//}
 	
-	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($_SERVER['REQUEST_URI'])>1 &&
-	strpos($_SERVER['REQUEST_URI'], '/index.php/settings')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/index.php/avatar/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], 'logout')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/ajax/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/jqueryFileTree.php')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/firstrunwizard/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/ws/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/sites/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/apps/files_picocms/')===FALSE &&
-	substr($_SERVER['REQUEST_URI'], -3)!='.js' &&
-	strpos($_SERVER['REQUEST_URI'], '/js/')===FALSE &&
-	strpos($_SERVER['REQUEST_URI'], '/external_collaborator_verify.php')===FALSE){
+	$uriFull = $_SERVER['REQUEST_URI'];
+	$uri_parts = explode('?', $_SERVER['REQUEST_URI'], 2);
+	$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $uri_parts[0]);
+	$uri = '/'.ltrim($uri, '/');
+	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($uri)>1 &&
+			strpos($uri, '/index.php/settings')===FALSE &&
+			strpos($uri, '/index.php/avatar/')===FALSE &&
+			strpos($uriFull, '?logout=')===FALSE &&
+			strpos($uri, '/ajax/')===FALSE &&
+			strpos($uri, '/jqueryFileTree.php')===FALSE &&
+			strpos($uri, '/firstrunwizard/')===FALSE &&
+			strpos($uri, '/ws/')===FALSE &&
+	/*If a user is logged in, but tries to access a public share, let him and don't redirect him to his own server*/
+			strpos($uri, '/shared/')===FALSE &&
+			strpos($uri, '/apps/files_sharing/public.php')===FALSE &&
+			strpos($uri, '/apps/files_pdfviewer/viewer.php')===FALSE &&
+			strpos($uri, '/sites/')===FALSE &&
+			strpos($uri, '/apps/files_picocms/')===FALSE &&
+			substr($uri, -3)!='.js' &&
+			strpos($uri, '/js/')===FALSE &&
+			strpos($uri, '/external_collaborator_verify.php')===FALSE){
 		$userid = \OCP\User::getUser();
-		$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $_SERVER['REQUEST_URI']);
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
 			// Don't redirect js/ajax calls - not allowed by security. (Proxying done instead).
 			if(isset($_SERVER['HTTP_REQUESTTOKEN']) || isset($_SERVER['REDIRECT_HTTP_REQUESTTOKEN']) ||
@@ -131,8 +138,8 @@ if (OCP\App::isEnabled('user_saml')) {
 			$backup2 = OCA\FilesSharding\Lib::getServerForUser($userid, false,
 					OCA\FilesSharding\Lib::$USER_SERVER_PRIORITY_BACKUP_2);
 			// The question mark is needed to not end up on slave login page
-			if($uri=='/'){
-				$uri = '/?';
+			if($uriFull=='/'){
+				$uriFull = '/?';
 			}
 			$parsedRedirect = parse_url($redirect);
 			$parsedBackup1 = empty($backup1)?'':parse_url($backup1);
@@ -140,14 +147,14 @@ if (OCP\App::isEnabled('user_saml')) {
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
 					(empty($parsedBackup1)||$_SERVER['HTTP_HOST']!==$parsedBackup1['host']) &&
 					(empty($parsedBackup2)||$_SERVER['HTTP_HOST']!==$parsedBackup2['host'])){
-				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
+						$redirect_full = rtrim($redirect, '/').'/'.ltrim($uriFull, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				if(!empty($fileID)){
 					$redirect_full = $redirect_full.'?item_source='.$fileID;
 				}
 				OC_USER_SAML_Hooks::setRedirectCookie();
-				OC_Log::write('user_saml', 'Redirecting to URL '.$uri.'-->'.$redirect_full.'-->'.serialize($backup1), OC_Log::WARN);
+				OC_Log::write('user_saml', 'Redirecting to URL '.$uriFull.'-->'.$redirect_full.'-->'.serialize($backup1), OC_Log::WARN);
 				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
