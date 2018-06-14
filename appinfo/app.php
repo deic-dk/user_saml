@@ -92,8 +92,8 @@ if (OCP\App::isEnabled('user_saml')) {
 		OCP\Util::addScript('user_saml', 'utils');
 	//}
 	
-	$uriFull = $_SERVER['REQUEST_URI'];
-	$uri_parts = explode('?', $_SERVER['REQUEST_URI'], 2);
+	$uriFull = empty($_SERVER['REQUEST_URI'])?'':$_SERVER['REQUEST_URI'];
+	$uri_parts = explode('?', $uriFull, 2);
 	$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $uri_parts[0]);
 	$uri = '/'.ltrim($uri, '/');
 	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($uri)>1 &&
