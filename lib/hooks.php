@@ -400,15 +400,18 @@ class OC_USER_SAML_Hooks {
 			}
 		}
 		
-		$redirect = \OCA\FilesSharding\Lib::getServerForUser($userid);
+		$redirect = \OCA\FilesSharding\Lib::getServerForUser($userid, false);
+		$redirectInternal = OCA\FilesSharding\Lib::getServerForUser($userid, true);
+		
 		if(self::check_user("", "", $userid) && !empty($redirect)){
 			// The question mark is needed to not end up on slave login page
 			if($uri=='/'){
 				$uri = '/?';
 			}
 			$parsedRedirect = parse_url($redirect);
-			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host']){
-				$redirect_full = rtrim($redirect, '/').'/'.ltrim($uri, '/');
+			$parsedRedirectInternal = parse_url($redirectInternal);
+			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] && $_SERVER['HTTP_HOST']!==$parsedRedirectInternal['host']){
+				$redirect_full = rtrim($redirect, '/').'/'.ltrim(\OC::$WEBROOT.$uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				\OC_Log::write('saml', 'Redirecting to: '.$redirect_full, \OC_Log::WARN);
