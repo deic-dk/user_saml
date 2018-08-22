@@ -321,10 +321,11 @@ class OC_USER_SAML_Hooks {
 		// Bump up quota if smaller than freequota
 		if(!empty($attributes['freequota']) && !empty($attributes['quota']) &&
 				(int)$attributes['freequota']>(int)$attributes['quota']){
+			\OCP\Util::writeLog('saml','Updating quota from "'.$attributes['quota'].'" for user: '.$uid, \OCP\Util::WARN);
 			$attributes['quota'] = $attributes['freequota'];
 		}
 		if(!empty($attributes['quota']) || $attributes['quota']==='0'){
-			\OCP\Util::writeLog('saml','Updating quota to: "'.$result['quota'].'" for user: '.$uid, \OCP\Util::WARN);
+			\OCP\Util::writeLog('saml','Updating quota to: "'.$attributes['quota'].'" for user: '.$uid, \OCP\Util::WARN);
 			self::update_quota($uid, $attributes['quota']);
 		}
 	}
