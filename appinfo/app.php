@@ -144,10 +144,11 @@ if (OCP\App::isEnabled('user_saml')) {
 			$parsedRedirect = parse_url($redirect);
 			$parsedBackup1 = empty($backup1)?'':parse_url($backup1);
 			$parsedBackup2 = empty($backup2)?'':parse_url($backup2);
+			
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
 					(empty($parsedBackup1)||$_SERVER['HTTP_HOST']!==$parsedBackup1['host']) &&
 					(empty($parsedBackup2)||$_SERVER['HTTP_HOST']!==$parsedBackup2['host']) &&
-					!OCA\FilesSharding\Lib::isHostMe($_SERVER['HTTP_HOST'])){
+					!OCA\FilesSharding\Lib::isHostMe($redirect)){
 						$redirect_full = rtrim($redirect, '/').'/'.ltrim($uriFull, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
