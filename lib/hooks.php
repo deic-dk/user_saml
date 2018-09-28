@@ -411,7 +411,9 @@ class OC_USER_SAML_Hooks {
 			}
 			$parsedRedirect = parse_url($redirect);
 			$parsedRedirectInternal = parse_url($redirectInternal);
-			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] && $_SERVER['HTTP_HOST']!==$parsedRedirectInternal['host']){
+			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
+					$_SERVER['HTTP_HOST']!==$parsedRedirectInternal['host'] &&
+					strpos($uri, '/sharingout/')===FALSE){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim(\OC::$WEBROOT.$uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);

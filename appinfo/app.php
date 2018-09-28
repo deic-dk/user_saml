@@ -110,6 +110,7 @@ if (OCP\App::isEnabled('user_saml')) {
 			strpos($uri, '/apps/files_pdfviewer/viewer.php')===FALSE &&
 			strpos($uri, '/sites/')===FALSE &&
 			strpos($uri, '/apps/files_picocms/')===FALSE &&
+			strpos($uri, '/sharingout/')===FALSE &&
 			substr($uri, -3)!='.js' &&
 			strpos($uri, '/js/')===FALSE &&
 			strpos($uri, '/external_collaborator_verify.php')===FALSE){
