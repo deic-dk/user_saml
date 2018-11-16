@@ -126,7 +126,12 @@ if (OCP\App::isEnabled('user_saml')) {
 					$redirect = OCA\FilesSharding\Lib::getMasterURL();
 					// Pass on the file ID as item_source
 					if(!empty($_POST) && !empty($_POST['path'])){
-						$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
+						$fileInfo = \OC\Files\Filesystem::getFileInfo($_POST['path']);
+						//$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
+						if(!empty($fileInfo)){
+							$fileID = $fileInfo['fileid'];
+							$fileType = $fileInfo->getType()===\OCP\Files\FileInfo::TYPE_FOLDER?'folder':'file';
+						}
 					}
 				}
 		}
@@ -154,7 +159,7 @@ if (OCP\App::isEnabled('user_saml')) {
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
 				if(!empty($fileID)){
-					$redirect_full = $redirect_full.'?item_source='.$fileID;
+					$redirect_full = $redirect_full.'?item_source='.$fileID.'&item_type='.$fileType;
 				}
 				OC_USER_SAML_Hooks::setRedirectCookie();
 				OC_Log::write('user_saml', 'Redirecting to URL '.$uriFull.'-->'.$redirect_full.'-->'.serialize($backup1), OC_Log::WARN);
