@@ -449,9 +449,10 @@ class OC_USER_SAML_Hooks {
 		unset($_COOKIE[$session_id]);
 		setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
 		setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
-		if($samlBackend->auth->isAuthenticated()){
-			$samlBackend->auth->logout();
-		}
+		// Not working for DTU
+		//if($samlBackend->auth->isAuthenticated()){
+		//	$samlBackend->auth->logout();
+		//}
 		return true;
 	}
 	
