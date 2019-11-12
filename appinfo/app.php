@@ -45,7 +45,10 @@ if (OCP\App::isEnabled('user_saml')) {
 	// register user backend for non-webdav access
 	if(!isset($_SERVER['REQUEST_URI']) ||
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/files/")!==0 &&
-			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0){
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0 &&
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingin/")!==0 &&
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingout/")!==0 &&
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/group/")!==0){
 		OC_User::useBackend( 'SAML' );
 	}
 	// for webdav access we don't need saml
