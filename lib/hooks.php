@@ -134,11 +134,18 @@ class OC_USER_SAML_Hooks {
 			if(isset($uid) && trim($uid)!='' && !\OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
 				$failCookieName = 'saml_auth_fail';
 				$userCookieName = 'saml_auth_fail_user';
-				$expire = 0;//time()+60*60*24*30;
-				$expired = time()-3600;
+				$expire = time()+60*5;
 				$path = '/';
-				setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $cookiedomain, false, false);
-				setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, false, false);
+				//setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $cookiedomain, true, false);
+				//setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, true, false);
+				// To prevent blocking from modern browsers, see
+				// https://stackoverflow.com/questions/58191969/how-to-fix-set-samesite-cookie-to-none-warning-chrome-extension
+				$date = new DateTime();
+				$date->setTimestamp($expires);
+				header('Set-Cookie: '.$failCookieName.'=notallowed:'.$uid.'; expires='.$date->format(DateTime::COOKIE).
+						'; path='.$path.'; domain='.$cookiedomain.'; sameSite=None; secure');
+				header('Set-Cookie: '.$userCookieName.'='.$uid.'; expires='.$date->format(DateTime::COOKIE).
+						'; path='.$path.'; domain='.$cookiedomain.'; sameSite=None; secure');
 				$spSource = 'default-sp';
 				$auth = new SimpleSAML_Auth_Simple($spSource);
 				\OC_Log::write('saml', 'Rejected user '.$uid, \OC_Log::ERROR);
