@@ -134,18 +134,18 @@ class OC_USER_SAML_Hooks {
 			if(isset($uid) && trim($uid)!='' && !\OC_User::userExists($uid) && !self::check_user_attributes($attributes) ) {
 				$failCookieName = 'saml_auth_fail';
 				$userCookieName = 'saml_auth_fail_user';
-				$expire = time()+60*5;
+				$expire = 0;//time()+60*5;
 				$path = '/';
-				//setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $cookiedomain, true, false);
-				//setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, true, false);
+				setcookie($failCookieName, "notallowed:".$uid, $expire, $path, $cookiedomain, false, false);
+				setcookie($userCookieName, $uid, $expire, $path, $cookiedomain, false, false);
 				// To prevent blocking from modern browsers, see
 				// https://stackoverflow.com/questions/58191969/how-to-fix-set-samesite-cookie-to-none-warning-chrome-extension
-				$date = new DateTime();
+				/*$date = new DateTime();
 				$date->setTimestamp($expires);
 				header('Set-Cookie: '.$failCookieName.'=notallowed:'.$uid.'; expires='.$date->format(DateTime::COOKIE).
 						'; path='.$path.'; domain='.$cookiedomain.'; sameSite=None; secure');
 				header('Set-Cookie: '.$userCookieName.'='.$uid.'; expires='.$date->format(DateTime::COOKIE).
-						'; path='.$path.'; domain='.$cookiedomain.'; sameSite=None; secure');
+						'; path='.$path.'; domain='.$cookiedomain.'; sameSite=None; secure');*/
 				$spSource = 'default-sp';
 				$auth = new SimpleSAML_Auth_Simple($spSource);
 				\OC_Log::write('saml', 'Rejected user '.$uid, \OC_Log::ERROR);
@@ -469,7 +469,13 @@ class OC_USER_SAML_Hooks {
 		setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires,
 			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT,
 			$cookiedomain, true);
+		/*$date = new DateTime();
+		$date->setTimezone(new DateTimeZone('GMT'));
+		$date->setTimestamp($short_expires);
+		header('Set-Cookie: '.\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE.'=ok; expires='.$date->format(DateTime::COOKIE).
+				'; path='.(empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT).'; domain='.$cookiedomain.'; sameSite=None; secure');*/
 	}
+	
 
 	// For files_sharding: put user data in session; set a short-lived cookie so slave can see user came from master.
 	private static function setAttributes($user_id, $saml_display_name, $saml_email, $saml_groups,
@@ -519,10 +525,14 @@ class OC_USER_SAML_Hooks {
 		if(\OCP\App::isEnabled('files_sharding')){
 			setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "", $expires,
 				empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
-		}
-		if(\OCP\App::isEnabled('files_sharding')){
 			setcookie(\OCA\FilesSharding\Lib::$ACCESS_OK_COOKIE, "", $expires,
 			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT, $cookiedomain);
+			/*$date = new DateTime();
+			$date->setTimestamp($expires);
+			header('Set-Cookie: '.\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE.'=; expires='.$date->format(DateTime::COOKIE).
+					'; path='.(empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT).'; domain='.$cookiedomain.'; sameSite=None; secure');
+			header('Set-Cookie: '.\OCA\FilesSharding\Lib::$ACCESS_OK_COOKIE.'=; expires='.$date->format(DateTime::COOKIE).
+					'; path='.(empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT).'; domain='.$cookiedomain.'; sameSite=None; secure');*/
 		}
 		unset($_SESSION["oc_display_name"]);
 		unset($_SESSION["oc_mail"]);
