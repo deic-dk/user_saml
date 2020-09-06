@@ -1,6 +1,3 @@
-
-<link rel="stylesheet" type="text/css" href="../apps/user_saml/css/saml.css" />
-
 <form id="saml" action="#" method="post">
 	<div id="samlSettings" class="section">
     <h2><?php p($l->t('SAML Authentication backend'));?></h2>
@@ -28,7 +25,7 @@
 		<p><label for="saml_affiliation_mapping"><?php p($l->t('Affiliation'));?></label><input type="text" id="saml_affiliation_mapping" name="saml_affiliation_mapping" value="<?php p($_['saml_affiliation_mapping']); ?>" /></p>
 	</fieldset>
 	<input type="hidden" name="requesttoken" value="<?php echo $_['requesttoken'] ?>" id="requesttoken">
-	<input type="submit" value="Save" />
+	<input type="button" id="save_saml_settings" value="Save" /><span id="samlMsg"></span>
 	</div>
 
 </form>

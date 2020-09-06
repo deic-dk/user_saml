@@ -45,10 +45,14 @@ if (OCP\App::isEnabled('user_saml')) {
 	// register user backend for non-webdav access
 	if(!isset($_SERVER['REQUEST_URI']) ||
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/files/")!==0 &&
-			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0 &&
+			(strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/remote.php/")!==0 ||
+			// This is to avoid that the connectivity checks of the admin page
+			// flushes the session.
+			!empty($_SERVER['HTTP_REFERER']) && substr($_SERVER['HTTP_REFERER'], -25)=="/index.php/settings/admin") &&
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingin/")!==0 &&
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingout/")!==0 &&
-			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/group/")!==0){
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/group/")!==0
+			){
 		OC_User::useBackend( 'SAML' );
 	}
 	// for webdav access we don't need saml
@@ -64,9 +68,11 @@ if (OCP\App::isEnabled('user_saml')) {
 	OCP\Util::connectHook('OC_User', 'post_login', 'OC_USER_SAML_Hooks', 'post_login');
 	OCP\Util::connectHook('OC_User', 'logout', 'OC_USER_SAML_Hooks', 'logout');
 
-	$forceLogin = OCP\Config::getAppValue('user_saml', 'saml_force_saml_login', false) && shouldEnforceAuthentication();
+	$myForceLogin = OCP\Config::getAppValue('user_saml', 'saml_force_saml_login', false) &&
+		shouldEnforceAuthentication();
 
-	if( (isset($_GET['app']) && $_GET['app'] == 'user_saml') || (!OCP\User::isLoggedIn() && $forceLogin && !isset($_GET['admin_login']) )) {
+	if( (isset($_GET['app']) && $_GET['app'] == 'user_saml' ||
+			!OCP\User::isLoggedIn() && $myForceLogin) && !isset($_GET['admin_login']) ) {
 
 		require_once 'user_saml/auth.php';
 
@@ -114,9 +120,11 @@ if (OCP\App::isEnabled('user_saml')) {
 			strpos($uri, '/sites/')===FALSE &&
 			strpos($uri, '/apps/files_picocms/')===FALSE &&
 			strpos($uri, '/sharingout/')===FALSE &&
+			substr($uri, -4)!='.css' &&
 			substr($uri, -3)!='.js' &&
 			strpos($uri, '/js/')===FALSE &&
-			strpos($uri, '/external_collaborator_verify.php')===FALSE){
+			strpos($uri, '/external_collaborator_verify.php')===FALSE &&
+			strpos($uri, '/apps/user_saml/ajax/save_settings.php')===FALSE){
 		$userid = \OCP\User::getUser();
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
 			// Don't redirect js/ajax calls - not allowed by security. (Proxying done instead).
@@ -194,6 +202,7 @@ function shouldEnforceAuthentication()
 			'public.php',
 			'remote.php',
 			'status.php',
+			'settings.php'
 		)
 	);
 

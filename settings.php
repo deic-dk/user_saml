@@ -21,6 +21,8 @@
  *
  */
 
+require_once __DIR__ . '/../../lib/base.php';
+
 OC_Util::checkAdminUser();
 
 $params = array('saml_ssp_path', 'saml_sp_source', 'saml_force_saml_login', 'saml_autocreate',
@@ -29,27 +31,7 @@ $params = array('saml_ssp_path', 'saml_sp_source', 'saml_force_saml_login', 'sam
 		'saml_group_mapping', 'saml_affiliation_mapping', 'saml_group_admin');
 
 OCP\Util::addscript('user_saml', 'settings');
-
-if ($_POST) {
-	// CSRF check
-	OCP\JSON::callCheck();
-
-	foreach($params as $param) {
-		if (isset($_POST[$param])) {
-			OCP\Config::setAppValue('user_saml', $param, $_POST[$param]);
-		}  
-		elseif ('saml_force_saml_login' == $param) {
-			OCP\Config::setAppValue('user_saml', $param, 0);
-		}
-		elseif ('saml_autocreate' == $param) {
-			// unchecked checkboxes are not included in the post paramters
-			OCP\Config::setAppValue('user_saml', $param, 0);
-		}
-		elseif ('saml_update_user_data' == $param) {
-			OCP\Config::setAppValue('user_saml', $param, 0);
-		}
-	}
-}
+OCP\Util::addstyle('user_saml', 'saml');
 
 // fill template
 $tmpl = new OCP\Template( 'user_saml', 'settings');
@@ -75,3 +57,4 @@ $tmpl->assign( 'saml_group_mapping', OCP\Config::getAppValue('user_saml', 'saml_
 $tmpl->assign( 'saml_affiliation_mapping', OCP\Config::getAppValue('user_saml', 'saml_affiliation_mapping', ''));
 
 return $tmpl->fetchPage();
+
