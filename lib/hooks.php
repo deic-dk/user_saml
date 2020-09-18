@@ -456,6 +456,8 @@ class OC_USER_SAML_Hooks {
 		unset($_COOKIE[$session_id]);
 		setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
 		setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
+		setcookie(\OCA\FilesSharding\Lib::$MASTER_LOGIN_COOKIE, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
+		setcookie(\OCA\FilesSharding\Lib::$MASTER_LOGIN_COOKIE, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
 		// Not working for DTU
 		//if($samlBackend->auth->isAuthenticated()){
 		//	$samlBackend->auth->logout();
@@ -464,12 +466,14 @@ class OC_USER_SAML_Hooks {
 	}
 	
 	public static function setRedirectCookie(){
-		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 5);
+		$short_expires = time() + \OC_Config::getValue('remember_login_cookie_lifetime', 30);
 		$cookiedomain = \OCP\App::isEnabled('files_sharding')?\OCA\FilesSharding\Lib::getCookieDomain():null;
 		setcookie(\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE, "ok", $short_expires,
 			empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT,
-			$cookiedomain, true);
-		/*$date = new DateTime();
+			$cookiedomain, true, true);
+		setcookie(\OCA\FilesSharding\Lib::$MASTER_LOGIN_COOKIE, "ok", 0,
+				empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT,
+				$cookiedomain, true, true);/*$date = new DateTime();
 		$date->setTimezone(new DateTimeZone('GMT'));
 		$date->setTimestamp($short_expires);
 		header('Set-Cookie: '.\OCA\FilesSharding\Lib::$LOGIN_OK_COOKIE.'=ok; expires='.$date->format(DateTime::COOKIE).
