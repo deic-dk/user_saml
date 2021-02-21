@@ -538,15 +538,17 @@ class OC_USER_SAML_Hooks {
 			header('Set-Cookie: '.\OCA\FilesSharding\Lib::$ACCESS_OK_COOKIE.'=; expires='.$date->format(DateTime::COOKIE).
 					'; path='.(empty(\OC::$WEBROOT)?"/":\OC::$WEBROOT).'; domain='.$cookiedomain.'; sameSite=None; secure');*/
 		}
-		unset($_SESSION["oc_display_name"]);
-		unset($_SESSION["oc_mail"]);
-		unset($_SESSION["oc_groups"]);
-		unset($_SESSION["oc_quota"]);
-		unset($_SESSION["oc_freequota"]);
-		unset($_SESSION["oc_data_folders"]);
-		unset($_SESSION["oc_storage_id"]);
-		unset($_SESSION["oc_numeric_storage_id"]);
-		unset($_SESSION["oc_affiliation"]);
+		if(!empty($_SESSION)){
+			unset($_SESSION["oc_display_name"]);
+			unset($_SESSION["oc_mail"]);
+			unset($_SESSION["oc_groups"]);
+			unset($_SESSION["oc_quota"]);
+			unset($_SESSION["oc_freequota"]);
+			unset($_SESSION["oc_data_folders"]);
+			unset($_SESSION["oc_storage_id"]);
+			unset($_SESSION["oc_numeric_storage_id"]);
+			unset($_SESSION["oc_affiliation"]);
+		}
 	}
 
 	private static function update_mail($uid, $email) {
