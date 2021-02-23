@@ -78,7 +78,7 @@ if (OCP\App::isEnabled('user_saml')) {
 
 		if (!OC_User::login('', '')) {
 			$error = true;
-			OC_Log::write('saml','Error trying to authenticate the user', OC_Log::DEBUG);
+			OC_Log::write('saml','Error trying to authenticate the user', OC_Log::ERROR);
 		}
 		
 		if (isset($_GET["linktoapp"])) {
@@ -129,22 +129,22 @@ if (OCP\App::isEnabled('user_saml')) {
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
 			// Don't redirect js/ajax calls - not allowed by security. (Proxying done instead).
 			if(isset($_SERVER['HTTP_REQUESTTOKEN']) || isset($_SERVER['REDIRECT_HTTP_REQUESTTOKEN']) ||
-					\OCA\FilesSharding\Lib::isMaster()){
-					return;
-				}
-				// Redirect iOS et al. That works...
-				else{
-					$redirect = OCA\FilesSharding\Lib::getMasterURL();
-					// Pass on the file ID as item_source
-					if(!empty($_POST) && !empty($_POST['path'])){
-						$fileInfo = \OC\Files\Filesystem::getFileInfo($_POST['path']);
-						//$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
-						if(!empty($fileInfo)){
-							$fileID = $fileInfo['fileid'];
-							$fileType = $fileInfo->getType()===\OCP\Files\FileInfo::TYPE_FOLDER?'folder':'file';
-						}
+				\OCA\FilesSharding\Lib::isMaster()){
+				return;
+			}
+			// Redirect iOS et al. That works...
+			else{
+				$redirect = OCA\FilesSharding\Lib::getMasterURL();
+				// Pass on the file ID as item_source
+				if(!empty($_POST) && !empty($_POST['path'])){
+					$fileInfo = \OC\Files\Filesystem::getFileInfo($_POST['path']);
+					//$fileID = \OCA\FilesSharding\Lib::getFileId($_POST['path']);
+					if(!empty($fileInfo)){
+						$fileID = $fileInfo['fileid'];
+						$fileType = $fileInfo->getType()===\OCP\Files\FileInfo::TYPE_FOLDER?'folder':'file';
 					}
 				}
+			}
 		}
 		else{
 			$redirect = OCA\FilesSharding\Lib::getServerForUser($userid);
