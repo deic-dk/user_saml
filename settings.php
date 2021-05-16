@@ -25,7 +25,7 @@ require_once __DIR__ . '/../../lib/base.php';
 
 OC_Util::checkAdminUser();
 
-$params = array('saml_ssp_path', 'saml_sp_source', 'saml_force_saml_login', 'saml_autocreate',
+$params = array('saml_ssp_path', 'saml_auth_class', 'saml_sp_source', 'saml_force_saml_login', 'saml_autocreate',
 		'saml_update_user_data', 'saml_protected_groups', 'saml_default_group', 'saml_username_mapping',
 		'saml_email_mapping', 'saml_quota_mapping', 'saml_default_quota', 'saml_displayname_mapping',
 		'saml_group_mapping', 'saml_affiliation_mapping', 'saml_group_admin');
@@ -41,7 +41,8 @@ foreach ($params as $param) {
 }
 
 // settings with default values
-$tmpl->assign( 'saml_ssp_path', OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '/var/www/sp/simplesamlphp'));
+$tmpl->assign( 'saml_ssp_path', OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '/var/www/simplesamlphp/lib/_autoload.php'));
+$tmpl->assign( 'saml_auth_class', OCP\Config::getAppValue('user_saml', 'saml_auth_class', 'SimpleSAML_Auth_Simple'));
 $tmpl->assign( 'saml_sp_source', OCP\Config::getAppValue('user_saml', 'saml_sp_source', 'default-sp'));
 $tmpl->assign( 'saml_force_saml_login', OCP\Config::getAppValue('user_saml', 'saml_force_saml_login', 0));
 $tmpl->assign( 'saml_autocreate', OCP\Config::getAppValue('user_saml', 'saml_autocreate', 0));

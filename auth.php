@@ -5,6 +5,8 @@
  *
  * @author Sixto Martin <smartin@yaco.es>
  * @copyright 2012 Yaco Sistemas // CONFIA
+ * @author Frederik Orellana <fror@dtu.dk>
+ * @author Mads Freek Petersen <fror@dtu.dk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
@@ -23,12 +25,15 @@
 
 	OCP\App::checkAppEnabled('user_saml');
 
-	$sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
+	$sspPath = empty($_COOKIE['saml_ssp_path'])?OCP\Config::getAppValue('user_saml', 'saml_ssp_path', ''):
+		$_COOKIE['saml_ssp_path'];
+	$sspAuthClass = empty($_COOKIE['saml_auth_class'])?OCP\Config::getAppValue('user_saml', 'saml_auth_class', 'SimpleSAML_Auth_Simple'):
+		$_COOKIE['saml_auth_class'];
 	$spSource = OCP\Config::getAppValue('user_saml', 'saml_sp_source', '');
 	$autocreate = OCP\Config::getAppValue('user_saml', 'saml_autocreate', false);
 
 	if (!empty($sspPath) && !empty($spSource)) {
-		include_once $sspPath."/lib/_autoload.php";
-		$auth = new SimpleSAML_Auth_Simple($spSource);
+		include_once $sspPath;
+		$auth = new $sspAuthClass($spSource);
 		$auth->requireAuth();
 	}

@@ -5,6 +5,8 @@
  *
  * @author Sixto Martin <smartin@yaco.es>
  * @copyright 2012 Yaco Sistemas // CONFIA
+ * @author Frederik Orellana <fror@dtu.dk>
+ * @author Mads Freek Petersen <fror@dtu.dk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
@@ -40,10 +42,17 @@ class OC_USER_SAML extends OC_User_Backend {
 	public $auth;
 	public $defaultFreeQuota;
 	public $affiliationMapping;
-	
-	
+
+
 	public function __construct() {
-		$this->sspPath = OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
+		// Important: this is no longer the path of simplesamlphp/lib,
+		// but rather the path of simplesamlphp/lib/_autoload.php or saml2jwt/_autoload.php
+		$this->sspPath = !empty($_COOKIE['saml_ssp_path'])?$_COOKIE['saml_ssp_path']:
+			OCP\Config::getAppValue('user_saml', 'saml_ssp_path', '');
+		// Name of the class to be instiantiated - defined by the above file.
+		// SimpleSAML_Auth_Simple or saml2jwt
+		$this->sspAuthClass = !empty($_COOKIE['saml_auth_class'])?$_COOKIE['saml_auth_class']:
+			OCP\Config::getAppValue('user_saml', 'saml_auth_class', 'SimpleSAML_Auth_Simple');
 		$this->spSource = OCP\Config::getAppValue('user_saml', 'saml_sp_source', '');
 		$this->forceLogin = OCP\Config::getAppValue('user_saml', 'saml_force_saml_login', false);
 		$this->autocreate = OCP\Config::getAppValue('user_saml', 'saml_autocreate', false);
@@ -57,14 +66,12 @@ class OC_USER_SAML extends OC_User_Backend {
 		$this->displayNameMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_displayname_mapping', '')));
 		$this->quotaMapping = explode (',', preg_replace('/\s+/', '', OCP\Config::getAppValue('user_saml', 'saml_quota_mapping', '')));
 		$this->defaultQuota = OCP\Config::getAppValue('user_saml', 'saml_default_quota', '');
-		$this->defaultFreeQuota = OCP\Config::getAppValue('user_saml', 'saml_default_freequota', ''); 
+		$this->defaultFreeQuota = OCP\Config::getAppValue('user_saml', 'saml_default_freequota', '');
 		$this->groupMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_group_mapping', '')));
 		$this->affiliationMapping = explode (',', preg_replace($trim_patterns, $trim_replacements, OCP\Config::getAppValue('user_saml', 'saml_affiliation_mapping', '')));
 		if (!empty($this->sspPath) && !empty($this->spSource)) {
-			include_once $this->sspPath."/lib/_autoload.php";
-
-			$this->auth = new SimpleSAML_Auth_Simple($this->spSource);
-
+			include_once $this->sspPath;
+			$this->auth = new $this->sspAuthClass($this->spSource);
 			if (isset($_COOKIE["user_saml_logged_in"]) AND $_COOKIE["user_saml_logged_in"] AND !$this->auth->isAuthenticated()) {
 				unset($_COOKIE["user_saml_logged_in"]);
 				setcookie("user_saml_logged_in", null, -1);
@@ -72,7 +79,14 @@ class OC_USER_SAML extends OC_User_Backend {
 			}
 		}
 	}
-
+	
+	public static function getAtributeCode($friendlyName){
+		include 'user_saml/lib/name2oid.php';
+		if(array_key_exists($friendlyName, $attributemap)){
+			return $attributemap[$friendlyName];
+		}
+		return null;
+	}
 
 	public function checkPassword($uid, $password) {
 
@@ -81,6 +95,8 @@ class OC_USER_SAML extends OC_User_Backend {
 		}
 
 		$attributes = $this->auth->getAttributes();
+		
+		//return $attributes['urn:oid:1.3.6.1.4.1.5923.1.1.1.6'][0];
 		
 		// Translate number code friendly name. TODO: get rid of this hard-coded path
 		include "/usr/local/www/simplesamlphp/attributemap/name2oid.php";
@@ -110,7 +126,7 @@ class OC_USER_SAML extends OC_User_Backend {
 
 	}
 	
-	
+
 	// From lib/private/user/database.php
 	// Apparently OC cannot use methods from more than one backend.
 	
@@ -127,28 +143,28 @@ class OC_USER_SAML extends OC_User_Backend {
 
 		return false;
 	}
-	
+
 	public function getDisplayName($uid) {
 		$this->loadUser($uid);
 		return empty($this->cache[$uid]['displayname']) ? $uid : $this->cache[$uid]['displayname'];
 	}
-	
+
 	public function userExists($uid) {
-		
+
 		if(empty($uid)){
 			return false;
 		}
-	
+
 		// This is only for ajax/ws calls when sharing
 		if(\OCP\App::isEnabled('files_sharding') && !OCA\FilesSharding\Lib::isMaster() && empty(OC_User::getUser())){
 			$userExists = \OCA\FilesSharding\Lib::ws('userExists', array('user_id' => $uid));
 			return $userExists;
 		}
-		
+
 		$this->loadUser($uid);
 		return !empty($this->cache[$uid]);
 	}
-	
+
 	private function loadUser($uid) {
 		if (empty($this->cache[$uid])) {
 			$query = OC_DB::prepare('SELECT `uid`, `displayname` FROM `*PREFIX*users` WHERE LOWER(`uid`) = LOWER(?)');
@@ -167,8 +183,5 @@ class OC_USER_SAML extends OC_User_Backend {
 
 		return true;
 	}
-	
-	
-	
 }
 
