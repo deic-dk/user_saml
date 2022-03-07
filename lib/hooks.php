@@ -42,12 +42,17 @@ class OC_USER_SAML_Hooks {
 
 	public static function post_login($parameters) {
 
-		// Do nothing if we're sharding and not on the master
-		if(\OCP\App::isEnabled('files_sharding') && !\OCA\FilesSharding\Lib::isMaster()){
-			return true;
+		$userid = $parameters['uid'];
+
+		if(\OCP\App::isEnabled('files_sharding') ){
+			// Check if someone is trying to log in as admin from a non-white-listed IP.
+			\OCA\FilesSharding\Lib::checkAdminIP($userid);
+			// Do nothing if we're sharding and not on the master
+			if(!\OCA\FilesSharding\Lib::isMaster()){
+				return true;
+			}
 		}
 
-		$userid = $parameters['uid'];
 		$samlBackend = new \OC_USER_SAML();
 		$ocUserDatabase = new \OC_User_Database();
 		// Redirect regardless of whether the user has authenticated with SAML or not.
