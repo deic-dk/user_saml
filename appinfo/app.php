@@ -70,7 +70,23 @@ if (OCP\App::isEnabled('user_saml')) {
 
 	$myForceLogin = OCP\Config::getAppValue('user_saml', 'saml_force_saml_login', false) &&
 		shouldEnforceAuthentication();
-
+	
+	// This is to address the issue of Firefox apparently sending an empty PHP_AUTH_USER header,
+	// which triggers the functions in the stack trace below, eventually causing the session file
+	// to be deleted.
+	/*
+	 OCA\\FilesSharding\\FileSessionHandler->destroy('698b64aa0e2768b...')\n#1 
+	 \/usr\/local\/www\/owncloud\/lib\/private\/user.php(237): 
+	 session_regenerate_id(true)\n#2 \/usr\/local\/www\/owncloud\/lib\/base.php(951): 
+	 OC_User::login('test2', 'dummy')\n#3 \/usr\/local\/www\/owncloud\/lib\/base.php(850): 
+	 OC::tryFormLogin()\n#4 \/usr\/local\/www\/owncloud\/lib\/base.php(787): 
+	 OC::handleLogin()\n#5 \/usr\/local\/www\/owncloud\/index.php(36): 
+	 OC::handleRequest()\n#6 {main}
+	 */
+	if(isset($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_USER'])){
+		unset($_SERVER['PHP_AUTH_USER']);
+	}
+	
 	if( (isset($_GET['app']) && $_GET['app'] == 'user_saml' ||
 			!OCP\User::isLoggedIn() && $myForceLogin) && !isset($_GET['admin_login']) ) {
 
@@ -230,8 +246,9 @@ function shouldEnforceAuthentication()
 
 	/* First case - translations.php run through index.php - permit without login */
 	$request_uri = basename($_SERVER['REQUEST_URI']);
-	if($request_uri === "translations.php" && $script_filename === "index.php"){
-		OC_Log::write('saml','translations.php accessed through index.php, so don\'t force login', OC_Log::DEBUG);
+	if(($request_uri === "translations.php" || strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT."/avatar/")===0) &&
+			$script_filename === "index.php"){
+		OC_Log::write('saml','translations.php or /avatar/ accessed through index.php, so don\'t force login', OC_Log::DEBUG);
 		return false;
 	}
 
