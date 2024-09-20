@@ -448,10 +448,11 @@ class OC_USER_SAML_Hooks {
 		}
 		session_destroy();
 		$session_id = session_id();
-		\OC_Log::write('saml', 'Clearing session cookie '.$session_id, \OC_Log::WARN);
-		unset($_COOKIE[$session_id]);
-		setcookie($session_id, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
-		setcookie($session_id, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
+		$session_cookie = \OC_Config::getValue('instanceid', null);
+		\OC_Log::write('saml', 'Clearing session cookie '.$session_cookie.'.-->'.$session_id, \OC_Log::WARN);
+		unset($_COOKIE[$session_cookie]);
+		setcookie($session_cookie, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
+		setcookie($session_cookie, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
 		setcookie(\OCA\FilesSharding\Lib::$MASTER_LOGIN_COOKIE, '', time()-3600, \OC::$WEBROOT, $cookiedomain);
 		setcookie(\OCA\FilesSharding\Lib::$MASTER_LOGIN_COOKIE, '', time()-3600, \OC::$WEBROOT . '/', $cookiedomain);
 		// Not working for DTU
