@@ -23,7 +23,7 @@ if(substr($cracklibCheck, -4)!=": OK"){
 	exit();
 }*/
 
-if (!is_null($password) && \OC_User::setPassword($username, $password)) {
+if (!empty($password) && \OC_User::setPassword($username, $password)) {
 	if(\OCP\App::isEnabled('files_sharding')){
 		if(\OCA\FilesSharding\Lib::isMaster() && !\OCA\FilesSharding\Lib::onServerForUser($username)){
 			// Update on the home server (to allow local/independent login)
