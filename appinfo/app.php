@@ -51,7 +51,7 @@ if (OCP\App::isEnabled('user_saml')) {
 			!empty($_SERVER['HTTP_REFERER']) && substr($_SERVER['HTTP_REFERER'], -25)=="/index.php/settings/admin") &&
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingin/")!==0 &&
 			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/sharingout/")!==0 &&
-			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/group/")!==0
+			strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/groupfolders/")!==0
 			){
 		OC_User::useBackend( 'SAML' );
 	}
@@ -117,30 +117,36 @@ if (OCP\App::isEnabled('user_saml')) {
 		OCP\Util::addScript('user_saml', 'utils');
 	//}
 	
+	function testRedirectUri($uri, $localPath){
+		return strpos($uri, $localPath)===false || strpos($uri, $localPath)>strlen(\OC::$WEBROOT)+2;
+	}
+
 	$uriFull = empty($_SERVER['REQUEST_URI'])?'':$_SERVER['REQUEST_URI'];
 	$uri_parts = explode('?', $uriFull, 2);
 	$uri = preg_replace('|^'.\OC::$WEBROOT.'|', '', $uri_parts[0]);
 	$uri = '/'.ltrim($uri, '/');
 	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($uri)>1 &&
-			strpos($uri, '/index.php/settings')===FALSE &&
-			strpos($uri, '/index.php/avatar/')===FALSE &&
-			strpos($uriFull, '?logout=')===FALSE &&
-			strpos($uri, '/ajax/')===FALSE &&
-			strpos($uri, '/jqueryFileTree.php')===FALSE &&
-			strpos($uri, '/firstrunwizard/')===FALSE &&
-			strpos($uri, '/ws/')===FALSE &&
+			testRedirectUri($uri, '/index.php/settings') &&
+			testRedirectUri($uri, '/index.php/avatar/') &&
+			strpos($uriFull, '?logout=')===false &&
+			testRedirectUri($uri, '/ajax/') &&
+			testRedirectUri($uri, '/jqueryFileTree.php') &&
+			testRedirectUri($uri, '/firstrunwizard/') &&
+			testRedirectUri($uri, '/ws/') &&
 	/*If a user is logged in, but tries to access a public share, let him and don't redirect him to his own server*/
-			strpos($uri, '/shared/')===FALSE &&
-			strpos($uri, '/apps/files_sharing/public.php')===FALSE &&
-			strpos($uri, '/apps/files_pdfviewer/viewer.php')===FALSE &&
-			strpos($uri, '/sites/')===FALSE &&
-			strpos($uri, '/apps/files_picocms/')===FALSE &&
-			strpos($uri, '/sharingout/')===FALSE &&
+			testRedirectUri($uri, '/shared/') &&
+			testRedirectUri($uri, '/apps/files_sharing/public.php') &&
+			testRedirectUri($uri, '/apps/files_pdfviewer/viewer.php') &&
+			testRedirectUri($uri, '/sites/') &&
+			testRedirectUri($uri, '/apps/files_picocms/') &&
+			testRedirectUri($uri, '/sharingout/') &&
+			testRedirectUri($uri, '/groups/') &&
+			testRedirectUri($uri, '/apps/user_group_admin/appinfo/api.php') &&
 			substr($uri, -4)!='.css' &&
 			substr($uri, -3)!='.js' &&
-			strpos($uri, '/js/')===FALSE &&
-			strpos($uri, '/external_collaborator_verify.php')===FALSE &&
-			strpos($uri, '/apps/user_saml/ajax/save_settings.php')===FALSE){
+			testRedirectUri($uri, '/js/') &&
+			testRedirectUri($uri, '/apps/user_group_admin/external_collaborator_verify.php') &&
+			testRedirectUri($uri, '/apps/user_saml/ajax/save_settings.php')){
 		$userid = \OCP\User::getUser();
 		if(strpos($uri, "/ocs/v1.php/apps/files_sharing/api/")===0){
 			// Don't redirect js/ajax calls - not allowed by security. (Proxying done instead).

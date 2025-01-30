@@ -371,6 +371,10 @@ class OC_USER_SAML_Hooks {
 		$mail = array_key_exists('mail' , $attributes) ? $attributes['mail'][0]: '';
 		return 	\OCA\FilesSharding\Lib::dbChooseSiteForUser($mail, $schacHomeOrganization, $organizationName, $entitlement);
 	}
+	
+	private static function testRedirectUri($uri, $localPath){
+		return strpos($uri, $localPath)===false || strpos($uri, $localPath)>strlen(\OC::$WEBROOT)+2;
+	}
 
 	private static function user_redirect($userid){
 
@@ -416,14 +420,19 @@ class OC_USER_SAML_Hooks {
 			$parsedRedirectInternal = parse_url($redirectInternal);
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
 					$_SERVER['HTTP_HOST']!==$parsedRedirectInternal['host'] &&
-					strpos($uri, '/sharingout/')===FALSE){
+					self::testRedirectUri($uri, '/sharingout/') &&
+					self::testRedirectUri($uri, '/groups/') &&
+					self::testRedirectUri($uri, '/apps/user_group_admin/appinfo/api.php')){
 				$redirect_full = rtrim($redirect, '/').'/'.ltrim(\OC::$WEBROOT.$uri, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
-				\OC_Log::write('saml', 'Redirecting to: '.$redirect_full, \OC_Log::WARN);
+				\OC_Log::write('saml', 'Redirecting '.$uri.' to: '.$redirect_full, \OC_Log::WARN);
 				header("HTTP/1.1 307 Temporary Redirect");
 				header('Location: ' . $redirect_full);
 				exit();
+			}
+			else{
+				\OC_Log::write('saml', 'NOT redirecting '.$uri, \OC_Log::WARN);
 			}
 		}
 	}
