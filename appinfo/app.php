@@ -187,7 +187,9 @@ if (OCP\App::isEnabled('user_saml')) {
 			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
 					(empty($parsedBackup1)||$_SERVER['HTTP_HOST']!==$parsedBackup1['host']) &&
 					(empty($parsedBackup2)||$_SERVER['HTTP_HOST']!==$parsedBackup2['host']) &&
-					!OCA\FilesSharding\Lib::isHostMe($redirect)){
+					!OCA\FilesSharding\Lib::isHostMe($redirect) &&
+					!empty($_SERVER['REQUEST_URI']) && strlen($_SERVER['REQUEST_URI'])>18 &&
+					substr($_SERVER['REQUEST_URI'], -19)!="change_password.php"){
 						$redirect_full = rtrim($redirect, '/').'/'.ltrim($uriFull, '/');
 				$redirect_full = preg_replace("/(\?*)app=user_saml(\&*)/", "$1", $redirect_full);
 				$redirect_full = preg_replace('|/+$|', '/', $redirect_full);
