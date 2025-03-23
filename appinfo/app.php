@@ -128,7 +128,7 @@ if (OCP\App::isEnabled('user_saml')) {
 	if(OCP\App::isEnabled('files_sharding') && OCP\User::isLoggedIn() && strlen($uri)>1 &&
 			testRedirectUri($uri, '/index.php/settings') &&
 			testRedirectUri($uri, '/index.php/avatar/') &&
-			strpos($uriFull, '?logout=')===false &&
+			strpos($uriFull, '?logout=')===false && strpos($uriFull, '&logout=')===false &&
 			testRedirectUri($uri, '/ajax/') &&
 			testRedirectUri($uri, '/jqueryFileTree.php') &&
 			testRedirectUri($uri, '/firstrunwizard/') &&
