@@ -591,7 +591,7 @@ class OC_USER_SAML_Hooks {
 				if(!\OC_Group::inGroup($uid, $group)) {
 					if(!\OC_Group::groupExists($group)) {
 						if(\OCP\App::isEnabled('user_group_admin')){
-							\OC_User_Group_Admin_Util::createHiddenGroup($group);
+							\OC_User_Group_Admin_Util::dbCreateHiddenGroup($group);
 						}
 						else{
 							\OC_Group::createGroup($group);
