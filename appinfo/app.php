@@ -184,7 +184,9 @@ if (OCP\App::isEnabled('user_saml')) {
 			$parsedBackup1 = empty($backup1)?'':parse_url($backup1);
 			$parsedBackup2 = empty($backup2)?'':parse_url($backup2);
 			
-			if($_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
+			if(/*Don't redirect directory listing requests in public share*/empty($_GET['t']) &&
+					$_SERVER['HTTP_HOST']!==$parsedRedirect['host'] &&
+					strpos($_SERVER['REQUEST_URI'], OC::$WEBROOT ."/apps/files_sharding/ajax/get_master_url.php")!==0 &&
 					(empty($parsedBackup1)||$_SERVER['HTTP_HOST']!==$parsedBackup1['host']) &&
 					(empty($parsedBackup2)||$_SERVER['HTTP_HOST']!==$parsedBackup2['host']) &&
 					!OCA\FilesSharding\Lib::isHostMe($redirect) &&
