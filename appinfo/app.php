@@ -129,6 +129,7 @@ if (OCP\App::isEnabled('user_saml')) {
 			testRedirectUri($uri, '/index.php/settings') &&
 			testRedirectUri($uri, '/index.php/avatar/') &&
 			testRedirectUri($uri, '/remote.php/dav/avatars/') &&
+			testRedirectUri($uri, '/apps/chooser/avatar.php') &&
 			strpos($uriFull, '?logout=')===false && strpos($uriFull, '&logout=')===false &&
 			testRedirectUri($uri, '/ajax/') &&
 			testRedirectUri($uri, '/jqueryFileTree.php') &&
